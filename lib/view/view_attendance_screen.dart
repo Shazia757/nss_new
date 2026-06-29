@@ -3,7 +3,8 @@ import 'package:nss_new/common_pages/navbar.dart';
 import 'package:nss_new/view/home_screen.dart';
 
 class AttendanceScreen extends StatefulWidget {
-  const AttendanceScreen({super.key});
+  final Map<String, dynamic>? volunteer;
+  const AttendanceScreen({super.key, this.volunteer});
 
   @override
   State<AttendanceScreen> createState() => _AttendanceScreenState();
@@ -76,17 +77,36 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    final filteredProgram = programsList.where((p) {
-      final titleMatch =
-          p['title']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
-          false;
-      return titleMatch;
-    }).toList();
+    final List<Map<String, dynamic>> attendedPrograms = widget.volunteer != null
+        ? List<Map<String, dynamic>>.from(
+            widget.volunteer!['attendedPrograms'] ?? [],
+          )
+        : [];
+
+    final filteredProgram = widget.volunteer != null
+        ? attendedPrograms.where((p) {
+            final titleMatch =
+                p['title']?.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ??
+                false;
+            return titleMatch;
+          }).toList()
+        : programsList.where((p) {
+            final titleMatch =
+                p['title']?.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ??
+                false;
+            return titleMatch;
+          }).toList();
 
     return SafeArea(
       child: Scaffold(
         backgroundColor: cs.surface,
-        bottomNavigationBar: const CustomBottomNavBar(currentIndex: 2),
+        bottomNavigationBar: widget.volunteer != null
+            ? null
+            : const CustomBottomNavBar(currentIndex: 2),
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -177,7 +197,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Attendance',
+                    widget.volunteer != null
+                        ? widget.volunteer!['name'] ?? 'Attendance'
+                        : 'Attendance',
                     style: tt.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: cs.primary,
@@ -185,7 +207,9 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Review your participation in NSS activities and service programs.',
+                    widget.volunteer != null
+                        ? 'Admission No: ${widget.volunteer!['admissionNo']} • ${widget.volunteer!['program']}'
+                        : 'Review your participation in NSS activities and service programs.',
                     style: tt.bodyMedium?.copyWith(
                       color: cs.onSurface.withOpacity(0.6),
                     ),
@@ -210,23 +234,48 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         _buildStatCard(
                           context,
                           'TOTAL PROGRAMS',
-                          '14 activities',
+                          widget.volunteer != null
+                              ? '${(widget.volunteer!['attendedPrograms'] as List).length} activities'
+                              : '14 activities',
                           cs,
                           tt,
                         ),
                         const SizedBox(width: 8),
                         _buildStatCard(
                           context,
-                          'CURRENT MONTH',
-                          '03 attended',
+                          widget.volunteer != null
+                              ? 'TOTAL HOURS'
+                              : 'CURRENT MONTH',
+                          widget.volunteer != null
+                              ? '${(widget.volunteer!['attendedPrograms'] as List).fold<int>(0, (sum, p) => sum + (int.tryParse(p['hours']?.toString() ?? '0') ?? 0))} hours'
+                              : '${programsList.length} attended',
                           cs,
                           tt,
                         ),
                         const SizedBox(width: 8),
                         _buildStatCard(
                           context,
-                          'RELIABILITY',
-                          '92% Participation',
+                          widget.volunteer != null
+                              ? 'AVG. HOURS'
+                              : 'RELIABILITY',
+                          widget.volunteer != null
+                              ? (() {
+                                  final list =
+                                      widget.volunteer!['attendedPrograms']
+                                          as List;
+                                  if (list.isEmpty) return '0.0 hrs/event';
+                                  final total = list.fold<int>(
+                                    0,
+                                    (sum, p) =>
+                                        sum +
+                                        (int.tryParse(
+                                              p['hours']?.toString() ?? '0',
+                                            ) ??
+                                            0),
+                                  );
+                                  return '${(total / list.length).toStringAsFixed(1)} hrs/event';
+                                })()
+                              : '92% Participation',
                           cs,
                           tt,
                         ),
@@ -262,8 +311,16 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
                         (program) => _buildHistoryCard(
                           context: context,
                           title: program['title'] ?? '',
-                          location: program['location'] ?? '',
+                          location: widget.volunteer != null
+                              ? (program['remarks']?.toString().isNotEmpty ==
+                                        true
+                                    ? program['remarks']!.toString()
+                                    : 'Log Recorded')
+                              : (program['location'] ?? ''),
                           date: program['date'] ?? '',
+                          hours: widget.volunteer != null
+                              ? program['hours']?.toString()
+                              : null,
                           cs: cs,
                           tt: tt,
                         ),
@@ -373,14 +430,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
     required String title,
     required String location,
     required String date,
+    String? hours,
     required ColorScheme cs,
     required TextTheme tt,
   }) {
     final parts = date.split(' ');
-    final month = parts.isNotEmpty
-        ? parts[0].substring(0, 3).toUpperCase()
-        : 'NSS';
-    final day = parts.length > 1 ? parts[1].replaceAll(',', '') : '--';
+    String month = 'NSS';
+    String day = '--';
+    if (parts.isNotEmpty) {
+      if (parts[0].length >= 3) {
+        month = parts[0].substring(0, 3).toUpperCase();
+      } else {
+        month = parts[0].toUpperCase();
+      }
+    }
+    if (parts.length > 1) {
+      day = parts[1].replaceAll(',', '');
+    }
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -462,6 +528,23 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
               ],
             ),
           ),
+          if (hours != null) ...[
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: cs.secondary.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '+$hours hrs',
+                style: tt.labelMedium?.copyWith(
+                  color: cs.secondary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

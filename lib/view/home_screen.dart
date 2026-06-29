@@ -1,5 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:nss_new/common_pages/navbar.dart';
+import 'package:nss_new/controller/account_controller.dart';
+import 'package:nss_new/database/local_storage.dart';
+import 'package:nss_new/view/add_program_screen.dart';
+import 'package:nss_new/view/manage_attendance_screen.dart';
+import 'package:nss_new/view/manage_blood_requirement_screen.dart';
+import 'package:nss_new/view/manage_volunteer_screen.dart';
+import 'package:nss_new/view/programs_screen.dart';
+import 'package:nss_new/controller/blood_requirement_controller.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -8,6 +17,7 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final bloodController = Get.put(BloodRequirementController());
 
     final notifications = [
       NotificationModel(
@@ -139,7 +149,48 @@ class HomeScreen extends StatelessWidget {
                         child: _buildStatsCard(context),
                       ),
                     ),
-
+                    if (LocalStorage.role == UserRole.secretary.name) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _actionCard(
+                              icon: Icons.star,
+                              bg: Colors.red.shade100,
+                              iconColor: Colors.red,
+                              title: "Manage Attendance",
+                              onTap: () =>
+                                  Get.to(() => ManageAttendanceScreen()),
+                            ),
+                            _actionCard(
+                              icon: Icons.description_outlined,
+                              bg: Colors.amber.shade100,
+                              iconColor: Colors.orange,
+                              title: "Add Program",
+                              onTap: () => Get.to(() => AddProgramScreen()),
+                            ),
+                            _actionCard(
+                              icon: Icons.menu_book_outlined,
+                              bg: Colors.indigo.shade100,
+                              iconColor: Colors.indigo,
+                              title: "Manage Volunteer",
+                              onTap: () =>
+                                  Get.to(() => ManageVolunteerScreen()),
+                            ),
+                            _actionCard(
+                              icon: Icons.bloodtype_outlined,
+                              bg: Colors.red.shade100,
+                              iconColor: Colors.red,
+                              title: "Blood Requirement",
+                              onTap: () =>
+                                  Get.to(() => ManageBloodRequirementScreen()),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                    ],
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
@@ -233,20 +284,60 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 15),
 
                     SizedBox(
-                      height: 240,
-                      child: ListView(
+                      height: 260,
+                      child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 10,
                         ),
-                        children: [
-                          _programCard(context, cs),
-                          const SizedBox(width: 16),
-                          _programCard(context, cs),
-                        ],
+                        itemCount: ProgramsScreen.upcomingList.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: 16),
+                        itemBuilder: (context, index) {
+                          final program = ProgramsScreen.upcomingList[index];
+                          return _programCard(context, cs, program);
+                        },
                       ),
                     ),
+
+                    Obx(() {
+                      if (bloodController.requirements.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Text(
+                              "Active Blood Requirements",
+                              style: Theme.of(context).textTheme.titleMedium!
+                                  .copyWith(color: cs.primary),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 220,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              itemCount: bloodController.requirements.length,
+                              separatorBuilder: (context, index) =>
+                                  const SizedBox(width: 16),
+                              itemBuilder: (context, index) {
+                                final req = bloodController.requirements[index];
+                                return _bloodRequirementCard(context, cs, req);
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
 
                     const SizedBox(height: 20),
 
@@ -293,6 +384,45 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       bottomNavigationBar: CustomBottomNavBar(currentIndex: 0),
+    );
+  }
+
+  Widget _actionCard({
+    required IconData icon,
+    required Color bg,
+    required Color iconColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: 100,
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 8)],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(height: 8),
+
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: bg,
+                child: Icon(icon, color: iconColor),
+              ),
+              const SizedBox(height: 8),
+              Text(title, textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -452,7 +582,51 @@ class NotificationModel {
   });
 }
 
-Widget _programCard(BuildContext context, ColorScheme cs) {
+void _showEnrollConfirmationDialog(BuildContext context, String programTitle) {
+  final cs = Theme.of(context).colorScheme;
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text("Confirm Enrollment"),
+      content: Text("Are you sure you want to enroll in \"$programTitle\"?"),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            "Cancel",
+            style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Get.snackbar(
+              "Success",
+              "Successfully enrolled in $programTitle",
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green.withOpacity(0.9),
+              colorText: Colors.white,
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: cs.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text("Confirm", style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _programCard(
+  BuildContext context,
+  ColorScheme cs,
+  Map<String, String> program,
+) {
   return Container(
     width: 280,
     padding: const EdgeInsets.all(18),
@@ -465,30 +639,34 @@ Widget _programCard(BuildContext context, ColorScheme cs) {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Green Campus Initiative",
+          program['title'] ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(
             context,
           ).textTheme.titleMedium!.copyWith(color: cs.primary),
         ),
         const SizedBox(height: 8),
         Text(
-          "Join us for the monthly campus cleanup and tree plantation drive.",
+          program['description'] ?? '',
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         const Spacer(),
-        const Row(
+        Row(
           children: [
-            Icon(Icons.calendar_today, size: 18),
-            SizedBox(width: 8),
-            Text("Oct 24 · 9:00 AM"),
+            const Icon(Icons.calendar_today, size: 18),
+            const SizedBox(width: 8),
+            Text(program['date'] ?? ''),
           ],
         ),
         const SizedBox(height: 10),
-        const Row(
+        Row(
           children: [
-            Icon(Icons.navigation, size: 18),
-            SizedBox(width: 8),
-            Text("Main Gate Area"),
+            const Icon(Icons.hourglass_empty, size: 18),
+            const SizedBox(width: 8),
+            Text(program['duration'] ?? ''),
           ],
         ),
         const SizedBox(height: 20),
@@ -501,12 +679,161 @@ Widget _programCard(BuildContext context, ColorScheme cs) {
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            onPressed: () {},
+            onPressed: () {
+              _showEnrollConfirmationDialog(context, program['title'] ?? '');
+            },
             child: const Text(
               "Enroll Now",
               style: TextStyle(color: Colors.white),
             ),
           ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _bloodRequirementCard(
+  BuildContext context,
+  ColorScheme cs,
+  BloodRequirement req,
+) {
+  return Container(
+    width: 280,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(24),
+      boxShadow: const [BoxShadow(blurRadius: 10, color: Colors.black12)],
+      border: Border.all(color: cs.outline.withOpacity(0.2)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: cs.primary.withOpacity(0.1),
+              child: Text(
+                req.bloodGroup,
+                style: TextStyle(
+                  color: cs.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                req.patientName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium!.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: cs.onSurface,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(
+              Icons.local_hospital_outlined,
+              size: 16,
+              color: cs.onSurface.withOpacity(0.6),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                req.hospitalName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Icon(
+              Icons.access_time,
+              size: 16,
+              color: cs.onSurface.withOpacity(0.6),
+            ),
+            const SizedBox(width: 8),
+            Text(req.dateTime, style: Theme.of(context).textTheme.bodySmall),
+          ],
+        ),
+        const Spacer(),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              elevation: 0,
+            ),
+            onPressed: () {
+              _showAcceptRequestConfirmationDialog(context, req);
+            },
+            child: const Text(
+              "Accept Request",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAcceptRequestConfirmationDialog(
+  BuildContext context,
+  BloodRequirement req,
+) {
+  final cs = Theme.of(context).colorScheme;
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Text("Accept Blood Request"),
+      content: Text(
+        "Are you sure you want to accept the request for patient \"${req.patientName}\" who requires \"${req.bloodGroup}\" blood at \"${req.hospitalName}\"?",
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(
+            "Cancel",
+            style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+          ),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pop(context);
+            Get.snackbar(
+              "Accepted",
+              "You have accepted the request for ${req.patientName}. Thank you!",
+              snackPosition: SnackPosition.BOTTOM,
+              backgroundColor: Colors.green.withOpacity(0.9),
+              colorText: Colors.white,
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: cs.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text("Confirm", style: TextStyle(color: Colors.white)),
         ),
       ],
     ),

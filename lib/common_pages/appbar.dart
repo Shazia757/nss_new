@@ -22,7 +22,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(6),
-              child: Image.asset("assets/logo.png", height: 50),
+              child: Image.asset("assets/logos/logo.png", height: 50),
             ),
             SizedBox(width: 10),
             Text(

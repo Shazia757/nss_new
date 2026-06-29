@@ -186,26 +186,47 @@ class LoginScreen extends StatelessWidget {
                                 ),
                               ],
                             ),
-                            child: FilledButton.icon(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: cs.secondary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16),
+                            child: Obx(
+                              () => FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: cs.secondary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
                                 ),
-                              ),
-                              onPressed: () {
-                                if (!c.isLoading.value) {
-                                  c.login();
-                                }
-                              },
-                              icon: const Icon(Icons.login),
-                              label: Text(
-                                "LOGIN",
-                                style: tt.labelLarge?.copyWith(
-                                  color: cs.onSecondary,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1.0,
-                                ),
+                                onPressed: () {
+                                  if (!c.isLoading.value) {
+                                    c.login();
+                                  }
+                                },
+                                icon: c.isLoading.value
+                                    ? const SizedBox(width: 24, height: 24)
+                                    : const Icon(Icons.login),
+                                label: c.isLoading.value
+                                    ? Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: const [
+                                          SizedBox(
+                                            width: 18,
+                                            height: 18,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          SizedBox(width: 12),
+                                          Text("Logging in..."),
+                                        ],
+                                      )
+                                    : Text(
+                                        "LOGIN",
+                                        style: tt.labelLarge?.copyWith(
+                                          color: cs.onSecondary,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.0,
+                                        ),
+                                      ),
                               ),
                             ),
                           ),

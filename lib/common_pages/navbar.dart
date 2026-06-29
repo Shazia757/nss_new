@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:nss_new/view/attendance_screen.dart';
+import 'package:nss_new/controller/account_controller.dart';
+import 'package:nss_new/database/local_storage.dart';
+import 'package:nss_new/view/reported_issues_screen.dart';
+import 'package:nss_new/view/view_attendance_screen.dart';
 import 'package:nss_new/view/home_screen.dart';
 import 'package:nss_new/view/issues_screen.dart';
 import 'package:nss_new/view/profile_screen.dart';
@@ -70,7 +73,11 @@ class CustomBottomNavBar extends StatelessWidget {
         screen = const AttendanceScreen();
         break;
       case 3:
-        screen = const IssuesScreen();
+        if (LocalStorage.role == UserRole.volunteer.name) {
+          screen = const IssuesScreen();
+        } else {
+          screen = const ReportedIssuesScreen();
+        }
         break;
       case 4:
         screen = const ProfileScreen();

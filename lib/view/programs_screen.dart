@@ -1,21 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:get/get.dart';
+import 'package:nss_new/common_pages/custom_decorations.dart';
 import 'package:nss_new/common_pages/navbar.dart';
+import 'package:nss_new/controller/account_controller.dart';
+import 'package:nss_new/database/local_storage.dart';
+import 'package:nss_new/view/add_program_screen.dart';
 import 'package:nss_new/view/home_screen.dart';
 
 class ProgramsScreen extends StatefulWidget {
   const ProgramsScreen({super.key});
 
-  @override
-  State<ProgramsScreen> createState() => _ProgramsScreenState();
-}
-
-class _ProgramsScreenState extends State<ProgramsScreen> {
-  int _selectedTab = 0;
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
-
-  final List<Map<String, String>> _upcomingList = [
+  static final List<Map<String, String>> upcomingList = [
     {
       'title': 'Blood Donation Camp 2026',
       'date': 'June 28, 2026',
@@ -38,6 +34,17 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
           'Help plant over 200 native saplings in the Adopted Village to combat local deforestation and promote environmental restoration.',
     },
   ];
+
+  @override
+  State<ProgramsScreen> createState() => _ProgramsScreenState();
+}
+
+class _ProgramsScreenState extends State<ProgramsScreen> {
+  int _selectedTab = 0;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  List<Map<String, String>> get _upcomingList => ProgramsScreen.upcomingList;
 
   final List<Map<String, String>> _pastList = [
     {
@@ -71,8 +78,21 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final totalPrograms = _upcomingList.length + _pastList.length;
+
+    int totalHours = 0;
+
+    for (final program in [..._upcomingList, ..._pastList]) {
+      final duration = program['duration'] ?? '';
+
+      final match = RegExp(r'\d+').firstMatch(duration);
+      if (match != null) {
+        totalHours += int.parse(match.group(0)!);
+      }
+    }
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+    final role = LocalStorage.role;
 
     // Filter lists based on search query
     final filteredUpcoming = _upcomingList.where((p) {
@@ -105,6 +125,14 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
       child: Scaffold(
         backgroundColor: cs.surface,
         bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Get.to(() => const AddProgramScreen());
+          },
+          backgroundColor: cs.primary,
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -212,6 +240,36 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            if (role == UserRole.secretary.name) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: StatCard(
+                        title: "Programs",
+                        value: totalPrograms.toString(),
+                        icon: Icons.event_rounded,
+                        backgroundColor: cs.primary,
+                        textColor: cs.onPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: StatCard(
+                        title: "Total Hours",
+                        value: totalHours.toString(),
+                        icon: Icons.schedule_rounded,
+                        backgroundColor: cs.secondary,
+                        textColor: cs.onSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+            ],
 
             // Tab Bar Row
             Padding(
@@ -264,6 +322,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
                             final program = currentList[index];
 
                             return _buildProgramCard(
+                              program: program,
                               context: context,
                               title: program['title'] ?? '',
                               date: program['date'] ?? '',
@@ -322,8 +381,52 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     );
   }
 
+  void _showEnrollConfirmationDialog(BuildContext context, String programTitle) {
+    final cs = Theme.of(context).colorScheme;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text("Confirm Enrollment"),
+        content: Text("Are you sure you want to enroll in \"$programTitle\"?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: cs.onSurface.withOpacity(0.6)),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Get.snackbar(
+                "Success",
+                "Successfully enrolled in $programTitle",
+                snackPosition: SnackPosition.BOTTOM,
+                backgroundColor: Colors.green.withOpacity(0.9),
+                colorText: Colors.white,
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: cs.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text(
+              "Confirm",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildProgramCard({
     required BuildContext context,
+    required Map<String, String> program,
     required String title,
     required String date,
     required String duration,
@@ -332,6 +435,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     required ColorScheme cs,
     required TextTheme tt,
   }) {
+    final role = LocalStorage.role;
     final Color cardBg = isPast ? cs.outline.withOpacity(0.08) : cs.onPrimary;
     final Color borderColor = isPast
         ? cs.outline.withOpacity(0.3)
@@ -390,33 +494,73 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
           ),
           if (!isPast) ...[
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: FilledButton(
-                onPressed: () {
-                  // Handle enroll action
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: cs.secondary,
-                  foregroundColor: cs.onSecondary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            if (role == UserRole.volunteer.name)
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: FilledButton(
+                  onPressed: () {
+                    _showEnrollConfirmationDialog(context, title);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: cs.secondary,
+                    foregroundColor: cs.onSecondary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    elevation: 0,
                   ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  'Enroll Now',
-                  style: tt.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.onSecondary,
+                  child: Text(
+                    'Enroll Now',
+                    style: tt.labelLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: cs.onSecondary,
+                    ),
                   ),
                 ),
               ),
-            ),
+            if (role == UserRole.secretary.name) ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          Get.to(() => AddProgramScreen(program: program)),
+                      icon: const Icon(Icons.edit_rounded),
+                      label: const Text("Edit"),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        // Delete program
+                      },
+                      icon: const Icon(Icons.delete_rounded),
+                      label: const Text("Delete"),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: cs.error,
+                        foregroundColor: cs.onError,
+                        minimumSize: const Size.fromHeight(40),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ],
       ),
     );
   }
 }
+
