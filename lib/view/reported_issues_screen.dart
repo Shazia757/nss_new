@@ -107,11 +107,11 @@ class ReportedIssuesScreen extends StatelessWidget {
         .where((issue) => issue['status'] == 'Resolved')
         .toList();
 
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
-        body: SingleChildScrollView(
+    return Scaffold(
+      backgroundColor: cs.surface,
+      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
+      body: SafeArea(
+        child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

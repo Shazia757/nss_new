@@ -259,17 +259,17 @@ class _ManageBloodRequirementScreenState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Get.to(() => const AddBloodRequirementScreen());
-          },
-          backgroundColor: cs.primary,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        body: Column(
+    return Scaffold(
+      backgroundColor: cs.surface,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Get.to(() => const AddBloodRequirementScreen());
+        },
+        backgroundColor: cs.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: SafeArea(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(

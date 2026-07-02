@@ -41,10 +41,10 @@ class _AddProgramScreenState extends State<AddProgramScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final isEditMode = widget.program != null;
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        body: Center(
+    return Scaffold(
+      backgroundColor: cs.surface,
+      body: SafeArea(
+        child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
             child: SingleChildScrollView(

@@ -1,49 +1,57 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:nss_new/api.dart';
+import 'package:nss_new/database/local_storage.dart';
+import 'package:nss_new/model/user_model.dart';
 import 'package:nss_new/view/home_screen.dart';
 
-enum UserRole { programOfficer, secretary, volunteer }
+enum UserRole { po, sec, vol }
 
 class AccountController {
-  final admnNoController = TextEditingController();
+  TextEditingController userNameController = TextEditingController();
   final passwordController = TextEditingController();
 
   var isLoading = false.obs;
+  var errorMessage = ''.obs;
 
   final box = GetStorage();
 
   Future<void> login() async {
-    final admnNo = admnNoController.text.trim().toUpperCase();
-    final password = passwordController.text.trim();
+    errorMessage.value = '';
 
-    if (admnNo.isEmpty || password.isEmpty) {
+    final userName = userNameController.text;
+    final password = passwordController.text;
+
+    if (userName.isEmpty || password.isEmpty) {
+      errorMessage.value = 'Please fill all fields!';
       Get.snackbar("Error", "Please fill all fields");
+
       return;
     }
-
     isLoading.value = true;
 
-    await Future.delayed(const Duration(seconds: 1));
-    final mockUsers = {
-      "PO001": {"password": "123456", "role": UserRole.programOfficer.name},
-      "SEC001": {"password": "123456", "role": UserRole.secretary.name},
-      "VOL001": {"password": "123456", "role": UserRole.volunteer.name},
-    };
+    Api().login({'admission_number': userName, 'password': password}).then((
+      response,
+    ) async {
+      if (response?.status == true && response?.data?.admissionNo != null) {
+        await LocalStorage().writeUser(response?.data ?? Users());
+        await LocalStorage().writeToken(response?.token ?? '');
+        await LocalStorage().writeRole(response?.role ?? '');
 
-    final user = mockUsers[admnNo];
-
-    if (user != null && user["password"] == password) {
-      // Save login info
-      box.write("isLoggedIn", true);
-      box.write("role", user["role"]);
-      box.write("admissionNo", admnNo);
-
-      Get.offAll(() => HomeScreen());
-    } else {
-      Get.snackbar("Login Failed", "Invalid Admission Number or Password");
-    }
-
-    isLoading.value = false;
+        Get.snackbar(
+          'Welcome',
+          '${response?.data?.name}',
+          icon: Icon(Icons.login, color: Colors.white),
+        );
+        Get.offAll(() => HomeScreen());
+      } else {
+        errorMessage.value = response?.message ?? 'Failed to login!';
+        Get.snackbar('Error', errorMessage.value);
+      }
+      isLoading.value = false;
+    });
   }
 }

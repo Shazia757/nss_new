@@ -92,7 +92,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     }
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final role = LocalStorage.role;
+    final role = LocalStorage().readUser().role;
 
     // Filter lists based on search query
     final filteredUpcoming = _upcomingList.where((p) {
@@ -121,19 +121,20 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
 
     final currentList = _selectedTab == 0 ? filteredUpcoming : filteredPast;
 
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Get.to(() => const AddProgramScreen());
-          },
-          backgroundColor: cs.primary,
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
+    return Scaffold(
+      extendBody: true,
+      backgroundColor: cs.surface,
+      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Get.to(() => const AddProgramScreen());
+        },
+        backgroundColor: cs.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
 
-        body: Column(
+      body: SafeArea(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Top Navigation & Search Bar
@@ -240,7 +241,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            if (role == UserRole.secretary.name) ...[
+            if (role == UserRole.sec.name) ...[
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Row(
@@ -381,7 +382,10 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     );
   }
 
-  void _showEnrollConfirmationDialog(BuildContext context, String programTitle) {
+  void _showEnrollConfirmationDialog(
+    BuildContext context,
+    String programTitle,
+  ) {
     final cs = Theme.of(context).colorScheme;
     showDialog(
       context: context,
@@ -414,10 +418,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              "Confirm",
-              style: TextStyle(color: Colors.white),
-            ),
+            child: const Text("Confirm", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -435,7 +436,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     required ColorScheme cs,
     required TextTheme tt,
   }) {
-    final role = LocalStorage.role;
+    final role = LocalStorage().readUser().role;
     final Color cardBg = isPast ? cs.outline.withOpacity(0.08) : cs.onPrimary;
     final Color borderColor = isPast
         ? cs.outline.withOpacity(0.3)
@@ -494,7 +495,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
           ),
           if (!isPast) ...[
             const SizedBox(height: 16),
-            if (role == UserRole.volunteer.name)
+            if (role == UserRole.vol.name)
               SizedBox(
                 width: double.infinity,
                 height: 40,
@@ -519,7 +520,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
                   ),
                 ),
               ),
-            if (role == UserRole.secretary.name) ...[
+            if (role == UserRole.sec.name) ...[
               Row(
                 children: [
                   Expanded(
@@ -563,4 +564,3 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     );
   }
 }
-

@@ -26,21 +26,21 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalVolunteers = controller.volunteerDetailsList.length;
+    final totalVolunteers = controller.volunteersList.length;
 
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            Get.to(() => const AddVolunteerScreen());
-          },
-          backgroundColor: cs.primary,
-          child: const Icon(Icons.person_add_alt, color: Colors.white),
-        ),
-        body: Column(
+    return Scaffold(
+      backgroundColor: cs.surface,
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Get.to(() => const AddVolunteerScreen());
+        },
+        backgroundColor: cs.primary,
+        child: const Icon(Icons.person_add_alt, color: Colors.white),
+      ),
+      body: SafeArea(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
@@ -153,16 +153,14 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
               ),
             ),
             Obx(() {
-              final filteredVolunteers = controller.volunteerDetailsList.where((
-                p,
-              ) {
+              final filteredVolunteers = controller.volunteersList.where((p) {
                 final nameMatch =
-                    p['name']?.toLowerCase().contains(
+                    p.name?.toLowerCase().contains(
                       _searchQuery.toLowerCase(),
                     ) ??
                     false;
                 final idMatch =
-                    p['admissionNo']?.toLowerCase().contains(
+                    p.admissionNo?.toLowerCase().contains(
                       _searchQuery.toLowerCase(),
                     ) ??
                     false;
@@ -248,9 +246,9 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                                                     backgroundColor: cs.primary
                                                         .withOpacity(0.12),
                                                     child: Text(
-                                                      (v['name']?.isNotEmpty ??
+                                                      (v.name?.isNotEmpty ??
                                                               false)
-                                                          ? v['name']![0]
+                                                          ? v.name![0]
                                                                 .toUpperCase()
                                                           : '?',
                                                       style: tt.titleMedium
@@ -272,8 +270,7 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                                                               .start,
                                                       children: [
                                                         Text(
-                                                          v['admissionNo'] ??
-                                                              '',
+                                                          v.admissionNo ?? '',
                                                           style: tt.bodySmall
                                                               ?.copyWith(
                                                                 color: cs
@@ -287,7 +284,7 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                                                           height: 2,
                                                         ),
                                                         Text(
-                                                          v['name'] ?? '',
+                                                          v.name ?? '',
                                                           overflow: TextOverflow
                                                               .ellipsis,
                                                           style: tt.bodyMedium

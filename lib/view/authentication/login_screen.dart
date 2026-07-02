@@ -93,7 +93,7 @@ class LoginScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 8),
                           TextField(
-                            controller: c.admnNoController,
+                            controller: c.userNameController,
                             style: TextStyle(color: cs.onSurface),
                             decoration: InputDecoration(
                               prefixIcon: Icon(

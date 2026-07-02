@@ -99,7 +99,7 @@ class HomeScreen extends StatelessWidget {
                                     ),
                                     SizedBox(height: 25),
                                     Text(
-                                      "Hello, Volunteer!",
+                                      "Hello, ${LocalStorage().readUser().name}",
                                       style: Theme.of(context)
                                           .textTheme
                                           .titleMedium
@@ -149,44 +149,49 @@ class HomeScreen extends StatelessWidget {
                         child: _buildStatsCard(context),
                       ),
                     ),
-                    if (LocalStorage.role == UserRole.secretary.name) ...[
+                    if (LocalStorage().readUser().role == 'sec') ...[
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            _actionCard(
-                              icon: Icons.star,
-                              bg: Colors.red.shade100,
-                              iconColor: Colors.red,
-                              title: "Manage Attendance",
-                              onTap: () =>
-                                  Get.to(() => ManageAttendanceScreen()),
-                            ),
-                            _actionCard(
-                              icon: Icons.description_outlined,
-                              bg: Colors.amber.shade100,
-                              iconColor: Colors.orange,
-                              title: "Add Program",
-                              onTap: () => Get.to(() => AddProgramScreen()),
-                            ),
-                            _actionCard(
-                              icon: Icons.menu_book_outlined,
-                              bg: Colors.indigo.shade100,
-                              iconColor: Colors.indigo,
-                              title: "Manage Volunteer",
-                              onTap: () =>
-                                  Get.to(() => ManageVolunteerScreen()),
-                            ),
-                            _actionCard(
-                              icon: Icons.bloodtype_outlined,
-                              bg: Colors.red.shade100,
-                              iconColor: Colors.red,
-                              title: "Blood Requirement",
-                              onTap: () =>
-                                  Get.to(() => ManageBloodRequirementScreen()),
-                            ),
-                          ],
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            spacing: 5,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              _actionCard(
+                                icon: Icons.star,
+                                bg: Colors.red.shade100,
+                                iconColor: Colors.red,
+                                title: "Manage Attendance",
+                                onTap: () =>
+                                    Get.to(() => ManageAttendanceScreen()),
+                              ),
+                              _actionCard(
+                                icon: Icons.description_outlined,
+                                bg: Colors.amber.shade100,
+                                iconColor: Colors.orange,
+                                title: "Add Program",
+                                onTap: () => Get.to(() => AddProgramScreen()),
+                              ),
+                              _actionCard(
+                                icon: Icons.menu_book_outlined,
+                                bg: Colors.indigo.shade100,
+                                iconColor: Colors.indigo,
+                                title: "Manage Volunteer",
+                                onTap: () =>
+                                    Get.to(() => ManageVolunteerScreen()),
+                              ),
+                              _actionCard(
+                                icon: Icons.bloodtype_outlined,
+                                bg: Colors.red.shade100,
+                                iconColor: Colors.red,
+                                title: "Blood Requirement",
+                                onTap: () => Get.to(
+                                  () => ManageBloodRequirementScreen(),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 18),
@@ -284,7 +289,7 @@ class HomeScreen extends StatelessWidget {
                     const SizedBox(height: 15),
 
                     SizedBox(
-                      height: 260,
+                      height: 280,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
                         padding: const EdgeInsets.symmetric(

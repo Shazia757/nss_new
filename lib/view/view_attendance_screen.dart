@@ -101,13 +101,13 @@ class _AttendanceScreenState extends State<AttendanceScreen> {
             return titleMatch;
           }).toList();
 
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        bottomNavigationBar: widget.volunteer != null
-            ? null
-            : const CustomBottomNavBar(currentIndex: 2),
-        body: Column(
+    return Scaffold(
+      backgroundColor: cs.surface,
+      bottomNavigationBar: widget.volunteer != null
+          ? null
+          : const CustomBottomNavBar(currentIndex: 2),
+      body: SafeArea(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Top Navigation & Search Bar

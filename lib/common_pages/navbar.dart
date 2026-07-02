@@ -73,7 +73,7 @@ class CustomBottomNavBar extends StatelessWidget {
         screen = const AttendanceScreen();
         break;
       case 3:
-        if (LocalStorage.role == UserRole.volunteer.name) {
+        if (LocalStorage().readUser().role=='vol') {
           screen = const IssuesScreen();
         } else {
           screen = const ReportedIssuesScreen();
