@@ -4,7 +4,6 @@ import 'package:nss_new/common_pages/custom_decorations.dart';
 import 'package:nss_new/controller/volunteer_controller.dart';
 import 'package:nss_new/view/add_volunteer_screen.dart';
 import 'package:nss_new/view/home_screen.dart';
-import 'package:nss_new/view/profile_screen.dart';
 
 class ManageVolunteerScreen extends StatefulWidget {
   const ManageVolunteerScreen({super.key});
@@ -14,9 +13,8 @@ class ManageVolunteerScreen extends StatefulWidget {
 }
 
 class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
-  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  final VolunteerController controller = Get.put(VolunteerController());
+  final VolunteerListController controller = Get.put(VolunteerListController());
 
   @override
   void dispose() {
@@ -26,15 +24,16 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalVolunteers = controller.volunteersList.length;
-
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
+
     return Scaffold(
       backgroundColor: cs.surface,
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Get.to(() => const AddVolunteerScreen());
+          Get.to(
+            () => const AddVolunteerScreen(),
+          )?.then((_) => controller.getData());
         },
         backgroundColor: cs.primary,
         child: const Icon(Icons.person_add_alt, color: Colors.white),
@@ -43,6 +42,7 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Top search and back row
             Padding(
               padding: const EdgeInsets.only(
                 left: 8.0,
@@ -77,9 +77,7 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
+                          controller.onSearchTextChanged(val);
                         },
                         decoration: InputDecoration(
                           hintText:
@@ -92,7 +90,9 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                             color: cs.onSurface.withOpacity(0.6),
                             size: 20,
                           ),
-                          suffixIcon: _searchQuery.isNotEmpty
+                          suffixIcon:
+                              controller.searchController.text.isNotEmpty ||
+                                  _searchController.text.isNotEmpty
                               ? IconButton(
                                   icon: Icon(
                                     Icons.clear,
@@ -101,12 +101,11 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                                   ),
                                   onPressed: () {
                                     _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
+                                    controller.onSearchTextChanged('');
                                   },
                                 )
-                              : null,
+                              : const SizedBox.shrink(),
+
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                             vertical: 12,
@@ -119,6 +118,8 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                 ],
               ),
             ),
+
+            // Header Section
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
@@ -136,185 +137,118 @@ class _ManageVolunteerScreenState extends State<ManageVolunteerScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Manage,track and oversee volunteer records.',
+                    'Manage, track and oversee volunteer records.',
                     style: tt.bodyMedium?.copyWith(
                       color: cs.onSurface.withOpacity(0.6),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  StatCard(
-                    title: "Total Volunteers",
-                    value: totalVolunteers.toString(),
-                    icon: Icons.schedule_rounded,
-                    backgroundColor: cs.onPrimary,
-                    textColor: cs.onSurface,
-                  ),
+                  Obx(() {
+                    final totalVolunteers = controller.usersList.length;
+                    return StatCard(
+                      title: "Total Volunteers",
+                      value: totalVolunteers.toString(),
+                      icon: Icons.people_outline_rounded,
+                      backgroundColor: cs.onPrimary,
+                      textColor: cs.onSurface,
+                    );
+                  }),
                 ],
               ),
             ),
-            Obx(() {
-              final filteredVolunteers = controller.volunteersList.where((p) {
-                final nameMatch =
-                    p.name?.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ??
-                    false;
-                final idMatch =
-                    p.admissionNo?.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ??
-                    false;
-                return nameMatch || idMatch;
-              }).toList();
 
-              return Expanded(
-                child: filteredVolunteers.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No volunteers found',
-                          style: tt.bodyMedium?.copyWith(
-                            color: cs.onSurface.withOpacity(0.5),
+            // Volunteers List
+            Expanded(
+              child: Obx(() {
+                if (controller.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (controller.searchList.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No volunteers found',
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    controller.getData();
+                  },
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    itemCount: controller.searchList.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final v = controller.searchList[index];
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: cs.onPrimary,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: cs.outline.withOpacity(0.3),
                           ),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async {
-                          // controller.volunteerDetailsList.refresh();
-                        },
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 4.0,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: cs.onPrimary,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cs.outline.withOpacity(0.3),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: cs.shadow.withOpacity(0.04),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: SizedBox(
-                                    width:
-                                        MediaQuery.of(context).size.width - 32,
-                                    child: DataTable(
-                                      headingRowColor: WidgetStateProperty.all(
-                                        cs.primary.withOpacity(0.06),
-                                      ),
-                                      columnSpacing: 24,
-                                      showCheckboxColumn: false,
-                                      columns: [
-                                        DataColumn(
-                                          label: Text(
-                                            'Volunteer',
-                                            style: tt.titleSmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: cs.primary,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                      rows: filteredVolunteers.map((v) {
-                                        return DataRow(
-                                          onSelectChanged: (_) {
-                                            Get.to(
-                                              () => ProfileScreen(volunteer: v),
-                                            );
-                                          },
-                                          cells: [
-                                            DataCell(
-                                              Row(
-                                                children: [
-                                                  CircleAvatar(
-                                                    radius: 18,
-                                                    backgroundColor: cs.primary
-                                                        .withOpacity(0.12),
-                                                    child: Text(
-                                                      (v.name?.isNotEmpty ??
-                                                              false)
-                                                          ? v.name![0]
-                                                                .toUpperCase()
-                                                          : '?',
-                                                      style: tt.titleMedium
-                                                          ?.copyWith(
-                                                            color: cs.primary,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 12),
-                                                  Expanded(
-                                                    child: Column(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .center,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          v.admissionNo ?? '',
-                                                          style: tt.bodySmall
-                                                              ?.copyWith(
-                                                                color: cs
-                                                                    .onSurface
-                                                                    .withOpacity(
-                                                                      0.6,
-                                                                    ),
-                                                              ),
-                                                        ),
-                                                        const SizedBox(
-                                                          height: 2,
-                                                        ),
-                                                        Text(
-                                                          v.name ?? '',
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style: tt.bodyMedium
-                                                              ?.copyWith(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: cs
-                                                                    .onSurface,
-                                                              ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                ),
-                              ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: cs.shadow.withOpacity(0.02),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                      ),
-              );
-            }),
+                        child: ListTile(
+                          onTap: () {
+                            controller.viewVolunteerProfile(v.admissionNo);
+                          },
+                          leading: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: cs.primary.withOpacity(0.12),
+                            child: Text(
+                              (v.name?.isNotEmpty ?? false)
+                                  ? v.name![0].toUpperCase()
+                                  : '?',
+                              style: tt.titleMedium?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            v.name ?? '',
+                            style: tt.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            "Admission No: ${v.admissionNo ?? ''}\n${v.department?.category ?? ''} ${v.department?.name ?? ''}",
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+            ),
           ],
         ),
       ),

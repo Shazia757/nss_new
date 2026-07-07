@@ -1,109 +1,154 @@
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
+import 'package:nss_new/api.dart';
+import 'package:nss_new/model/attendance_model.dart';
+import 'package:nss_new/model/volunteer_model.dart';
+import 'package:nss_new/common_pages/custom_decorations.dart';
 
 class AttendanceController extends GetxController {
-  final volunteerList = <Map<String, dynamic>>[
-    {
-      'admissionNo': 'FCBSC001',
-      'name': 'Aisha Rahman',
-      'program': 'B.Voc Software Development',
-      'attendedPrograms': [
-        {
-          'title': 'Anti-Drug Awareness Rally',
-          'date': 'May 15, 2026',
-          'hours': '2',
-        },
-        {'title': 'Blood Donation Camp', 'date': 'June 12, 2026', 'hours': '4'},
-      ],
-    },
-    {
-      'admissionNo': 'FCBSC002',
-      'name': 'Muhammed Shamil',
-      'program': 'B.Sc Computer Science',
-      'attendedPrograms': [
-        {
-          'title': 'Summer Camp for Kids',
-          'date': 'April 22, 2026',
-          'hours': '6',
-        },
-        {
-          'title': 'Tree Plantation Drive',
-          'date': 'July 05, 2026',
-          'hours': '3',
-        },
-      ],
-    },
-    {
-      'admissionNo': 'FCBSC003',
-      'name': 'Fathima Nisa',
-      'program': 'B.Com Finance',
-      'attendedPrograms': [
-        {
-          'title': 'Palliative Care Training',
-          'date': 'March 10, 2026',
-          'hours': '6',
-        },
-      ],
-    },
-    {
-      'admissionNo': 'FCBSC004',
-      'name': 'Adil Mohammed',
-      'program': 'B.Voc Software Development',
-      'attendedPrograms': [
-        {
-          'title': 'Beach Cleaning Drive',
-          'date': 'August 08, 2026',
-          'hours': '4',
-        },
-        {
-          'title': 'Independence Day Celebration',
-          'date': 'August 15, 2026',
-          'hours': '5',
-        },
-      ],
-    },
-    {
-      'admissionNo': 'FCBSC005',
-      'name': 'Jishad Ali',
-      'program': 'BCA',
-      'attendedPrograms': [
-        {
-          'title': 'Health Awareness Campaign',
-          'date': 'September 03, 2026',
-          'hours': '3',
-        },
-        {
-          'title': 'Flood Relief Collection',
-          'date': 'September 18, 2026',
-          'hours': '7',
-        },
-      ],
-    },
-  ].obs;
+  TextEditingController programNameController = TextEditingController();
+  TextEditingController dateController = TextEditingController();
+  TextEditingController durationController = TextEditingController();
+  TextEditingController searchController = TextEditingController();
+  DateTime selectedDate = DateTime.now();
+  RxList<Volunteer> usersList = <Volunteer>[].obs;
+  RxList<Volunteer> searchList = <Volunteer>[].obs;
+  RxList<Volunteer> selectedVolList = <Volunteer>[].obs;
+  RxList<Attendance> attendanceList = <Attendance>[].obs;
+  RxList<String> programsList = <String>[].obs;
+  RxInt sortColumnIndex = 0.obs;
+  RxBool isAscending = true.obs;
+  String programName = '';
+  RxBool isLoading = false.obs;
+  RxBool isDeleteButtonLoading = false.obs;
+  RxBool isAttendanceLoading = false.obs;
 
-  void markAttendance({
-    required List<String> selectedAdmissions,
-    required String programTitle,
-    required String date,
-    required String hours,
-    String remarks = '',
-  }) {
-    for (var i = 0; i < volunteerList.length; i++) {
-      final volunteer = volunteerList[i];
-      if (selectedAdmissions.contains(volunteer['admissionNo'])) {
-        final List<Map<String, dynamic>> attended = List<Map<String, dynamic>>.from(volunteer['attendedPrograms'] ?? []);
-        attended.add({
-          'title': programTitle,
-          'date': date,
-          'hours': hours,
-          'remarks': remarks,
-        });
-        
-        volunteerList[i] = {
-          ...volunteer,
-          'attendedPrograms': attended,
-        };
-      }
+  RxBool isProgramLoading = true.obs;
+  RxInt totalHours = 0.obs;
+  RxInt totalPrograms = 0.obs;
+  DateTime? date;
+
+  @override
+  void onInit() {
+    getUsers();
+    getPrograms();
+
+    super.onInit();
+  }
+
+  void getUsers() {
+    isLoading.value = true;
+    Api().getVolunteers().then(
+      (value) {
+        final data =
+            value?.data?.where((element) => element.role != 'po').toList();
+        usersList.assignAll(data ?? []);
+        searchList.assignAll(usersList);
+        searchList.sort((a, b) => a.name!.compareTo(b.name!));
+        isLoading.value = false;
+      },
+    );
+  }
+
+  void getPrograms() {
+    isProgramLoading.value = true;
+    Api().programNames().then(
+      (value) {
+        programsList.assignAll(value?.programs?.toSet() ?? []);
+        isProgramLoading.value = false;
+      },
+    );
+  }
+
+  Future<void> getAttendance(String id) async {
+    isAttendanceLoading.value = true;
+    return Api().getAttendance(id).then(
+      (value) {
+        attendanceList.assignAll(value?.attendance ?? []);
+        attendanceList.sort((a, b) => b.date!.compareTo(a.date!));
+        isLoading.value = false;
+        isAttendanceLoading.value = false;
+
+        totalHours.value = attendanceList.fold(
+            0, (sum, element) => (sum += element.hours ?? 0));
+        totalPrograms.value = attendanceList.length;
+      },
+    );
+  }
+
+  bool onSubmitAttendanceValidation() {
+    if ((programName.isEmpty) || (programName != programNameController.text)) {
+      CustomWidgets.showSnackBar('Invalid', 'Please select valid program ');
+      return false;
     }
-    volunteerList.refresh();
+    if (dateController.text.isEmpty) {
+      CustomWidgets.showSnackBar('Invalid', 'Please enter date');
+      return false;
+    }
+    if (durationController.text.isEmpty) {
+      CustomWidgets.showSnackBar('Invalid', 'Please enter duration');
+      return false;
+    }
+    if (selectedVolList.isEmpty) {
+      CustomWidgets.showSnackBar('Invalid', 'Please select volunteers');
+      return false;
+    }
+    return true;
+  }
+
+  onSubmitAttendance() async {
+    isLoading.value = true;
+    bool response = true;
+    for (Volunteer e in selectedVolList) {
+      final value = await Api().addAttendance({
+        'date': date.toString(),
+        'hours': int.tryParse(durationController.text),
+        'program_name': programName,
+        'volunteer': e.admissionNo.toString(),
+      });
+      if (!(value?.status ?? true)) response = false;
+    }
+
+    isLoading.value = false;
+    if (response) {
+      Get.back();
+      Get.back();
+      CustomWidgets.showSnackBar('Success', 'Attendance added successfully');
+    } else {
+      CustomWidgets.showSnackBar('Error', 'Some attendance not added');
+    }
+  }
+
+  deleteAttendance(int id) async {
+    isDeleteButtonLoading.value = true;
+    Api().deleteAttendance(id).then(
+      (value) {
+        isDeleteButtonLoading.value = false;
+        if (value?.status ?? false) {
+          Get.back();
+          CustomWidgets.showSnackBar(
+              "Success", value?.message ?? "Attendance deleted successfully.");
+        } else {
+          CustomWidgets.showSnackBar(
+              "Error", value?.message ?? 'Failed to delete attendance.');
+        }
+      },
+    );
+  }
+
+  void onSearchTextChanged(String value) async {
+    if (value.isEmpty) {
+      searchController.clear();
+      searchList.assignAll(usersList);
+    } else {
+      final filtered = usersList.where((volunteer) {
+        final name = volunteer.name?.toLowerCase() ?? '';
+        final admnNo = volunteer.admissionNo ?? '';
+
+        return admnNo.contains(value.toLowerCase()) || name.contains(value);
+      }).toList();
+
+      searchList.assignAll(filtered);
+    }
   }
 }

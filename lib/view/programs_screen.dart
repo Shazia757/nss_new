@@ -1,39 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:nss_new/common_pages/custom_decorations.dart';
 import 'package:nss_new/common_pages/navbar.dart';
-import 'package:nss_new/controller/account_controller.dart';
+import 'package:nss_new/controller/program_controller.dart';
+import 'package:nss_new/controller/home_controller.dart';
 import 'package:nss_new/database/local_storage.dart';
 import 'package:nss_new/view/add_program_screen.dart';
 import 'package:nss_new/view/home_screen.dart';
+import 'package:nss_new/model/programs_model.dart';
 
 class ProgramsScreen extends StatefulWidget {
   const ProgramsScreen({super.key});
-
-  static final List<Map<String, String>> upcomingList = [
-    {
-      'title': 'Blood Donation Camp 2026',
-      'date': 'June 28, 2026',
-      'duration': '5 hours',
-      'description':
-          'A collaborative blood donation drive with the local Government Hospital. Join us in saving lives and raising awareness about healthcare.',
-    },
-    {
-      'title': 'Adopted Village Clean Drive',
-      'date': 'July 02, 2026',
-      'duration': '4 hours',
-      'description':
-          'Help clean public spaces, set up proper waste disposal systems, and educate the villagers on community hygiene and sanitation practices.',
-    },
-    {
-      'title': 'NSS Special Tree Plantation',
-      'date': 'July 10, 2026',
-      'duration': '3 hours',
-      'description':
-          'Help plant over 200 native saplings in the Adopted Village to combat local deforestation and promote environmental restoration.',
-    },
-  ];
 
   @override
   State<ProgramsScreen> createState() => _ProgramsScreenState();
@@ -43,32 +22,9 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
   int _selectedTab = 0;
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-
-  List<Map<String, String>> get _upcomingList => ProgramsScreen.upcomingList;
-
-  final List<Map<String, String>> _pastList = [
-    {
-      'title': 'Anti-Drug Awareness Rally',
-      'date': 'May 15, 2026',
-      'duration': '2 hours',
-      'description':
-          'Successfully conducted an awareness rally through the local town center to educate youth against drug and substance abuse.',
-    },
-    {
-      'title': 'Summer Camp for Kids',
-      'date': 'April 20 - 25, 2026',
-      'duration': '5 days',
-      'description':
-          'Organized an interactive summer camp providing basic computer literacy and arts/crafts training for under-privileged students.',
-    },
-    {
-      'title': 'Palliative Care Training',
-      'date': 'March 10, 2026',
-      'duration': '6 hours',
-      'description':
-          'Basic orientation and palliative care volunteer training session conducted in partnership with Farook College Palliative unit.',
-    },
-  ];
+  final ProgramListController c = Get.put(ProgramListController());
+  final HomeController homeController = Get.put(HomeController());
+  final addController = Get.put(AddProgramController());
 
   @override
   void dispose() {
@@ -78,268 +34,289 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final totalPrograms = _upcomingList.length + _pastList.length;
-
-    int totalHours = 0;
-
-    for (final program in [..._upcomingList, ..._pastList]) {
-      final duration = program['duration'] ?? '';
-
-      final match = RegExp(r'\d+').firstMatch(duration);
-      if (match != null) {
-        totalHours += int.parse(match.group(0)!);
-      }
-    }
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
     final role = LocalStorage().readUser().role;
-
-    // Filter lists based on search query
-    final filteredUpcoming = _upcomingList.where((p) {
-      final titleMatch =
-          p['title']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
-          false;
-      final descMatch =
-          p['description']?.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ??
-          false;
-      return titleMatch || descMatch;
-    }).toList();
-
-    final filteredPast = _pastList.where((p) {
-      final titleMatch =
-          p['title']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
-          false;
-      final descMatch =
-          p['description']?.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ??
-          false;
-      return titleMatch || descMatch;
-    }).toList();
-
-    final currentList = _selectedTab == 0 ? filteredUpcoming : filteredPast;
 
     return Scaffold(
       extendBody: true,
       backgroundColor: cs.surface,
       bottomNavigationBar: const CustomBottomNavBar(currentIndex: 1),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Get.to(() => const AddProgramScreen());
-        },
-        backgroundColor: cs.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-
+      floatingActionButton: (role != 'vol')
+          ? FloatingActionButton(
+              onPressed: () {
+                Get.to(
+                  () => const AddProgramScreen(),
+                )?.then((_) => c.getPrograms());
+              },
+              backgroundColor: cs.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top Navigation & Search Bar
-            Padding(
-              padding: const EdgeInsets.only(
-                left: 8.0,
-                right: 16.0,
-                top: 12.0,
-                bottom: 8.0,
-              ),
-              child: Row(
-                children: [
-                  IconButton(
-                    icon: Icon(Icons.arrow_back, color: cs.primary),
-                    onPressed: () {
-                      if (Navigator.of(context).canPop()) {
-                        Navigator.of(context).pop();
-                      } else {
-                        Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(
-                            builder: (context) => const HomeScreen(),
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Container(
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: cs.outline.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'Search programs...',
-                          hintStyle: tt.bodyMedium?.copyWith(
-                            color: cs.onSurface.withOpacity(0.5),
-                          ),
-                          prefixIcon: Icon(
-                            Icons.search,
-                            color: cs.onSurface.withOpacity(0.6),
-                            size: 20,
-                          ),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: Icon(
-                                    Icons.clear,
-                                    color: cs.onSurface.withOpacity(0.6),
-                                    size: 18,
-                                  ),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
-                        ),
-                        style: tt.bodyMedium?.copyWith(color: cs.onSurface),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        child: Obx(() {
+          if (c.isLoading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            // Title and Subtitle Section
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Service Programs',
-                    style: tt.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: cs.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Discover and participate in social service activities',
-                    style: tt.bodyMedium?.copyWith(
-                      color: cs.onSurface.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (role == UserRole.sec.name) ...[
+          final totalPrograms = c.programsList.length;
+          final totalHours = c.programsList.fold<int>(
+            0,
+            (sum, p) => sum + (p.duration ?? 0),
+          );
+
+          final now = DateTime.now();
+          final today = DateTime(now.year, now.month, now.day);
+
+          final filteredUpcoming = c.searchList.where((p) {
+            if (p.date == null) return false;
+            final pDate = DateTime(p.date!.year, p.date!.month, p.date!.day);
+            final isUpcoming =
+                pDate.isAfter(today) || pDate.isAtSameMomentAs(today);
+
+            final titleMatch =
+                p.name?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+                false;
+            final descMatch =
+                p.description?.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ??
+                false;
+            return isUpcoming && (titleMatch || descMatch);
+          }).toList();
+
+          final filteredPast = c.searchList.where((p) {
+            if (p.date == null) return true;
+            final pDate = DateTime(p.date!.year, p.date!.month, p.date!.day);
+            final isPast = pDate.isBefore(today);
+
+            final titleMatch =
+                p.name?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+                false;
+            final descMatch =
+                p.description?.toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ??
+                false;
+            return isPast && (titleMatch || descMatch);
+          }).toList();
+
+          final currentList = _selectedTab == 0
+              ? filteredUpcoming
+              : filteredPast;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top Navigation & Search Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                padding: const EdgeInsets.only(
+                  left: 8.0,
+                  right: 16.0,
+                  top: 12.0,
+                  bottom: 8.0,
+                ),
                 child: Row(
                   children: [
-                    Expanded(
-                      child: StatCard(
-                        title: "Programs",
-                        value: totalPrograms.toString(),
-                        icon: Icons.event_rounded,
-                        backgroundColor: cs.primary,
-                        textColor: cs.onPrimary,
-                      ),
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: cs.primary),
+                      onPressed: () {
+                        if (Navigator.of(context).canPop()) {
+                          Navigator.of(context).pop();
+                        } else {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute(
+                              builder: (context) => const HomeScreen(),
+                            ),
+                          );
+                        }
+                      },
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 4),
                     Expanded(
-                      child: StatCard(
-                        title: "Total Hours",
-                        value: totalHours.toString(),
-                        icon: Icons.schedule_rounded,
-                        backgroundColor: cs.secondary,
-                        textColor: cs.onSecondary,
+                      child: Container(
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: cs.outline.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (val) {
+                            setState(() {
+                              _searchQuery = val;
+                            });
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search programs...',
+                            hintStyle: tt.bodyMedium?.copyWith(
+                              color: cs.onSurface.withOpacity(0.5),
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: cs.onSurface.withOpacity(0.6),
+                              size: 20,
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.clear,
+                                      color: cs.onSurface.withOpacity(0.6),
+                                      size: 18,
+                                    ),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                          ),
+                          style: tt.bodyMedium?.copyWith(color: cs.onSurface),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 20),
-            ],
-
-            // Tab Bar Row
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Row(
-                children: [
-                  _buildTabButton(
-                    context,
-                    'Upcoming programs',
-                    isSelected: _selectedTab == 0,
-                    onTap: () => setState(() => _selectedTab = 0),
-                  ),
-                  _buildTabButton(
-                    context,
-                    'Past Activities',
-                    isSelected: _selectedTab == 1,
-                    onTap: () => setState(() => _selectedTab = 1),
-                  ),
-                ],
+              // Title and Subtitle Section
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                  vertical: 8.0,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Service Programs',
+                      style: tt.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Discover and participate in social service activities',
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Program Cards List
-            Expanded(
-              child: currentList.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No programs found',
-                        style: tt.bodyMedium?.copyWith(
-                          color: cs.onSurface.withOpacity(0.5),
+              const SizedBox(height: 12),
+              if (role != 'vol') ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: StatCard(
+                          title: "Programs",
+                          value: totalPrograms.toString(),
+                          icon: Icons.event_rounded,
+                          backgroundColor: cs.primary,
+                          textColor: cs.onPrimary,
                         ),
                       ),
-                    )
-                  : LayoutBuilder(
-                      builder: (context, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 900
-                            ? 3
-                            : constraints.maxWidth > 600
-                            ? 2
-                            : 1;
-                        return MasonryGridView.count(
-                          crossAxisCount: crossAxisCount,
-                          physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
-                          mainAxisSpacing: 16,
-                          crossAxisSpacing: 16,
-                          itemCount: currentList.length,
-                          itemBuilder: (context, index) {
-                            final program = currentList[index];
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: StatCard(
+                          title: "Total Hours",
+                          value: "$totalHours hrs",
+                          icon: Icons.schedule_rounded,
+                          backgroundColor: cs.secondary,
+                          textColor: cs.onSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
-                            return _buildProgramCard(
-                              program: program,
-                              context: context,
-                              title: program['title'] ?? '',
-                              date: program['date'] ?? '',
-                              duration: program['duration'] ?? '',
-                              description: program['description'] ?? '',
-                              isPast: _selectedTab == 1,
-                              cs: cs,
-                              tt: tt,
-                            );
-                          },
-                        );
-                      },
+              // Tab Bar Row
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: Row(
+                  children: [
+                    _buildTabButton(
+                      context,
+                      'Upcoming programs',
+                      isSelected: _selectedTab == 0,
+                      onTap: () => setState(() => _selectedTab = 0),
                     ),
-            ),
-          ],
-        ),
+                    _buildTabButton(
+                      context,
+                      'Past Activities',
+                      isSelected: _selectedTab == 1,
+                      onTap: () => setState(() => _selectedTab = 1),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Program Cards List
+              Expanded(
+                child: currentList.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No programs found',
+                          style: tt.bodyMedium?.copyWith(
+                            color: cs.onSurface.withOpacity(0.5),
+                          ),
+                        ),
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount = constraints.maxWidth > 900
+                              ? 3
+                              : constraints.maxWidth > 600
+                              ? 2
+                              : 1;
+                          return MasonryGridView.count(
+                            crossAxisCount: crossAxisCount,
+                            physics: const BouncingScrollPhysics(),
+                            padding: const EdgeInsets.only(
+                              left: 16,
+                              right: 16,
+                              bottom: 90,
+                            ),
+                            mainAxisSpacing: 16,
+                            crossAxisSpacing: 16,
+                            itemCount: currentList.length,
+                            itemBuilder: (context, index) {
+                              final program = currentList[index];
+
+                              return _buildProgramCard(
+                                program: program,
+                                context: context,
+                                title: program.name ?? '',
+                                date: program.date != null
+                                    ? DateFormat.yMMMd().format(program.date!)
+                                    : 'N/A',
+                                duration: "${program.duration ?? 0} hours",
+                                description: program.description ?? '',
+                                isPast: _selectedTab == 1,
+                                cs: cs,
+                                tt: tt,
+                              );
+                            },
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }
@@ -382,17 +359,16 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     );
   }
 
-  void _showEnrollConfirmationDialog(
-    BuildContext context,
-    String programTitle,
-  ) {
+  void _showEnrollConfirmationDialog(BuildContext context, Program program) {
     final cs = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Confirm Enrollment"),
-        content: Text("Are you sure you want to enroll in \"$programTitle\"?"),
+        content: Text(
+          "Are you sure you want to enroll in \"${program.name}\"?",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -404,13 +380,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Get.snackbar(
-                "Success",
-                "Successfully enrolled in $programTitle",
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.green.withOpacity(0.9),
-                colorText: Colors.white,
-              );
+              homeController.enroll(program);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: cs.primary,
@@ -418,7 +388,21 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text("Confirm", style: TextStyle(color: Colors.white)),
+            child: Obx(
+              () => homeController.isEnrolledLoading.value
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      "Confirm",
+                      style: TextStyle(color: Colors.white),
+                    ),
+            ),
           ),
         ],
       ),
@@ -427,7 +411,7 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
 
   Widget _buildProgramCard({
     required BuildContext context,
-    required Map<String, String> program,
+    required Program program,
     required String title,
     required String date,
     required String duration,
@@ -437,34 +421,26 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
     required TextTheme tt,
   }) {
     final role = LocalStorage().readUser().role;
-    final Color cardBg = isPast ? cs.outline.withOpacity(0.08) : cs.onPrimary;
-    final Color borderColor = isPast
-        ? cs.outline.withOpacity(0.3)
-        : cs.outline.withOpacity(0.6);
-    final Color titleColor = isPast
-        ? cs.onSurface.withOpacity(0.5)
-        : cs.onSurface;
-    final Color textColor = isPast
-        ? cs.onSurface.withOpacity(0.4)
-        : cs.onSurface.withOpacity(0.7);
-    final Color iconColor = isPast ? cs.onSurface.withOpacity(0.4) : cs.primary;
+    final Color cardBg = cs.onPrimary;
+    final Color borderColor = cs.outline.withOpacity(0.6);
+    final Color titleColor = cs.onSurface;
+    final Color textColor = cs.onSurface.withOpacity(0.7);
+    final Color iconColor = cs.primary;
+    final loading = false.obs;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: borderColor),
-        boxShadow: isPast
-            ? []
-            : [
-                BoxShadow(
-                  color: cs.shadow.withOpacity(0.02),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+        boxShadow: [
+          BoxShadow(
+            color: cs.shadow.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -481,8 +457,13 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
             children: [
               Icon(Icons.calendar_today_outlined, size: 16, color: iconColor),
               const SizedBox(width: 6),
-              Text(date, style: tt.bodySmall?.copyWith(color: textColor)),
-              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  date,
+                  style: tt.bodySmall?.copyWith(color: textColor),
+                ),
+              ),
+              const SizedBox(width: 10),
               Icon(Icons.hourglass_empty, size: 16, color: iconColor),
               const SizedBox(width: 6),
               Text(duration, style: tt.bodySmall?.copyWith(color: textColor)),
@@ -495,13 +476,13 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
           ),
           if (!isPast) ...[
             const SizedBox(height: 16),
-            if (role == UserRole.vol.name)
+            if (role == 'vol')
               SizedBox(
                 width: double.infinity,
                 height: 40,
                 child: FilledButton(
                   onPressed: () {
-                    _showEnrollConfirmationDialog(context, title);
+                    _showEnrollConfirmationDialog(context, program);
                   },
                   style: FilledButton.styleFrom(
                     backgroundColor: cs.secondary,
@@ -520,16 +501,18 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
                   ),
                 ),
               ),
-            if (role == UserRole.sec.name) ...[
+            if (role != 'vol') ...[
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () =>
-                          Get.to(() => AddProgramScreen(program: program)),
-                      icon: const Icon(Icons.edit_rounded),
-                      label: const Text("Edit"),
+                      onPressed: () => Get.to(
+                        () => AddProgramScreen(program: program),
+                      )?.then((_) => c.getPrograms()),
+                      icon: const Icon(Icons.edit_rounded, size: 14),
+                      label: const Text("Edit", style: TextStyle(fontSize: 12)),
                       style: OutlinedButton.styleFrom(
+                        padding: EdgeInsets.zero,
                         minimumSize: const Size.fromHeight(40),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -537,27 +520,120 @@ class _ProgramsScreenState extends State<ProgramsScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 6),
                   Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        // Delete program
-                      },
-                      icon: const Icon(Icons.delete_rounded),
-                      label: const Text("Delete"),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: cs.error,
-                        foregroundColor: cs.onError,
-                        minimumSize: const Size.fromHeight(40),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    child: Obx(() {
+                      return ElevatedButton.icon(
+                        onPressed: () {
+                          c.getEnrolledStudents(program, loading);
+                        },
+                        icon: loading.value
+                            ? const SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.indigo,
+                                ),
+                              )
+                            : const Icon(Icons.people_rounded, size: 14),
+                        label: Text(
+                          loading.value ? "Loading" : "Volunteers",
+                          style: const TextStyle(fontSize: 12),
                         ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: cs.primaryContainer,
+                          foregroundColor: cs.onPrimaryContainer,
+                          padding: EdgeInsets.zero,
+                          minimumSize: const Size.fromHeight(40),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          elevation: 0,
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    onPressed: () {
+                      final addController = Get.find<AddProgramController>();
+
+                      addController.isDeleteButtonLoading.value = false;
+                      CustomWidgets().showConfirmationDialog(
+                        title: "Delete Program",
+                        message:
+                            "Are you sure you want to delete this program?",
+                        onConfirm: () async {
+                          await addController.deleteProgram(program.id!);
+                          c.getPrograms();
+                        },
+                        data: Obx(
+                          () => addController.isDeleteButtonLoading.value
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Text(
+                                  "Confirm",
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                        ),
+                      );
+                    },
+                    icon: Icon(
+                      Icons.delete_outline_rounded,
+                      color: cs.error,
+                      size: 18,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: cs.errorContainer.withOpacity(0.2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                   ),
                 ],
               ),
             ],
+          ],
+          if (isPast && role != 'vol') ...[
+            const SizedBox(height: 16),
+            Obx(() {
+              final loading = false.obs;
+              return ElevatedButton.icon(
+                onPressed: () {
+                  c.getEnrolledStudents(program, loading);
+                },
+                icon: loading.value
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.indigo,
+                        ),
+                      )
+                    : const Icon(Icons.people_rounded, size: 14),
+                label: Text(
+                  loading.value ? "Loading" : "Volunteers",
+                  style: const TextStyle(fontSize: 12),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: cs.primaryContainer,
+                  foregroundColor: cs.onPrimaryContainer,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size.fromHeight(40),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  elevation: 0,
+                ),
+              );
+            }),
           ],
         ],
       ),

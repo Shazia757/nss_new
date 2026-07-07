@@ -18,22 +18,23 @@ class Users {
   String? updatedBy;
   String? year;
 
-  Users(
-      {this.admissionNo,
-      this.name,
-      this.email,
-      this.phoneNo,
-      this.dob,
-      this.createdDate,
-      this.updatedDate,
-      this.department,
-      this.role,
-      this.rollNo,
-      this.createdBy,
-      this.updatedBy,
-      this.year,
-      this.caste,
-      this.gender});
+  Users({
+    this.admissionNo,
+    this.name,
+    this.email,
+    this.phoneNo,
+    this.dob,
+    this.createdDate,
+    this.updatedDate,
+    this.department,
+    this.role,
+    this.rollNo,
+    this.createdBy,
+    this.updatedBy,
+    this.year,
+    this.caste,
+    this.gender,
+  });
 
   factory Users.fromJson(Map<String, dynamic>? json) {
     return Users(
@@ -41,9 +42,17 @@ class Users {
       name: json?['name'] as String?,
       email: json?['email'] as String?,
       phoneNo: json?['phone_number'] as String?,
-      dob: DateTime.tryParse(json?['date_of_birth']),
-      createdDate: DateTime.tryParse(json?['created_date']),
-      updatedDate: DateTime.tryParse(json?['updated_date']),
+      dob: json?['date_of_birth'] != null
+          ? DateTime.tryParse(json!['date_of_birth'].toString())
+          : null,
+
+      createdDate: json?['created_date'] != null
+          ? DateTime.tryParse(json!['created_date'].toString())
+          : null,
+
+      updatedDate: json?['updated_date'] != null
+          ? DateTime.tryParse(json!['updated_date'].toString())
+          : null,
       department: json?['department'] != null
           ? Department.fromJson(json?['department'])
           : null,
@@ -90,12 +99,13 @@ class LoginResponse {
   String? token;
   Users? data;
 
-  LoginResponse(
-      {required this.status,
-      required this.data,
-      required this.role,
-      this.message,
-      this.token});
+  LoginResponse({
+    required this.status,
+    required this.data,
+    required this.role,
+    this.message,
+    this.token,
+  });
 
   factory LoginResponse.fromJson(Map<String, dynamic> json) {
     return LoginResponse(
@@ -127,7 +137,9 @@ class GeneralResponse {
 
   factory GeneralResponse.fromJson(Map<String, dynamic> json) {
     return GeneralResponse(
-        status: json['status'] as bool?, message: json['message'] as String?);
+      status: json['status'] as bool?,
+      message: json['message'] as String?,
+    );
   }
 
   Map<String, dynamic> toJson() {

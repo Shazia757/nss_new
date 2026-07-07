@@ -10,51 +10,92 @@ class TokenExpiredScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tt = Theme.of(context).textTheme;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Session Expired'),
-        centerTitle: true,
-        backgroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
-        foregroundColor: Theme.of(context).colorScheme.primaryContainer,
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.block_outlined, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            const Text(
-              'Your session has expired.',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Please log in again to continue.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
+      backgroundColor: cs.surface,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Card(
+                elevation: 6,
+                shadowColor: Colors.black45,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(24),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                foregroundColor:
-                    Theme.of(context).colorScheme.onPrimaryContainer,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 28,
+                    vertical: 36,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        height: 90,
+                        width: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.lock_clock_rounded,
+                          color: Colors.red,
+                          size: 46,
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      Text(
+                        "Session Expired",
+                        style: tt.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      Text(
+                        "Your login session has expired.\nPlease sign in again to continue using the application.",
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+
+                      const SizedBox(height: 32),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                          ),
+                          onPressed: () {
+                            Api().logout().then((_) {
+                              LocalStorage().clearAll();
+                              Get.offAll(() => LoginScreen());
+                            });
+                          },
+                          icon: const Icon(Icons.logout_rounded),
+                          label: const Text("Log In Again"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              onPressed: () {
-                Api().logout().then(
-                  (value) {
-                    LocalStorage().clearAll();
-                    Get.offAll(() => LoginScreen());
-                  },
-                );
-              },
-              child: const Text('Logout'),
             ),
-          ],
+          ),
         ),
       ),
     );

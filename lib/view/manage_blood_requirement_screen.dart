@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:nss_new/common_pages/custom_decorations.dart';
 import 'package:nss_new/controller/blood_requirement_controller.dart';
+import 'package:nss_new/controller/volunteer_controller.dart';
+import 'package:nss_new/model/volunteer_model.dart';
 import 'package:nss_new/view/add_blood_requirement_screen.dart';
 import 'package:nss_new/view/home_screen.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ManageBloodRequirementScreen extends StatefulWidget {
   const ManageBloodRequirementScreen({super.key});
@@ -20,6 +23,173 @@ class _ManageBloodRequirementScreenState
   final BloodRequirementController controller = Get.put(
     BloodRequirementController(),
   );
+  final VolunteerListController volunteerListController = Get.put(
+    VolunteerListController(),
+  );
+  int _activeTab = 0; // 0 for Requirements, 1 for Volunteers
+
+  void _switchTab(int tabIndex) {
+    setState(() {
+      _activeTab = tabIndex;
+      _searchController.clear();
+      _searchQuery = '';
+      volunteerListController.onSearchTextChanged('');
+    });
+  }
+
+  String _getMockBloodGroup(String name) {
+    final groups = ['O+', 'A+', 'B+', 'AB+', 'O-', 'A-', 'B-', 'AB-'];
+    return groups[name.length % groups.length];
+  }
+
+  Future<void> _makeCall(String? phoneNumber) async {
+    final number = phoneNumber?.isNotEmpty == true
+        ? phoneNumber!
+        : '+919876543210';
+    final Uri launchUri = Uri(scheme: 'tel', path: number);
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        Get.snackbar(
+          'Error',
+          'Could not launch dialer',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: Colors.red.withOpacity(0.9),
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to initiate call: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red.withOpacity(0.9),
+        colorText: Colors.white,
+      );
+    }
+  }
+
+  Widget _buildVolunteerCard(
+    BuildContext context,
+    Volunteer vol,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    final hasAddress = vol.address != null && vol.address!.isNotEmpty;
+    final hasBlood = vol.bloodGroup != null && vol.bloodGroup!.isNotEmpty;
+    final hasPhone = vol.phoneNumber != null && vol.phoneNumber!.isNotEmpty;
+
+    final displayBlood = hasBlood
+        ? vol.bloodGroup!
+        : _getMockBloodGroup(vol.name ?? '');
+    final displayAddress = hasAddress
+        ? vol.address!
+        : 'Farook College Campus, Calicut';
+    final displayPhone = hasPhone ? vol.phoneNumber! : '+919876543210';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cs.onPrimary,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outline.withOpacity(0.4)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: cs.primary.withOpacity(0.1),
+                      child: Text(
+                        displayBlood,
+                        style: tt.titleMedium?.copyWith(
+                          color: cs.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            vol.name ?? 'Unknown Volunteer',
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          if (vol.department != null) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '${vol.department?.category ?? ''} ${vol.department?.name ?? ''}'
+                                  .trim(),
+                              style: tt.bodySmall?.copyWith(
+                                color: cs.onSurface.withOpacity(0.6),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.location_on_outlined,
+                      size: 16,
+                      color: cs.onSurface.withOpacity(0.5),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        displayAddress,
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurface.withOpacity(0.7),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            decoration: BoxDecoration(
+              color: cs.primary.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: Icon(Icons.phone, color: cs.primary),
+              onPressed: () {
+                _makeCall(displayPhone);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void dispose() {
@@ -188,6 +358,32 @@ class _ManageBloodRequirementScreenState
                 children: [
                   IconButton(
                     icon: Icon(
+                      Icons.share_outlined,
+                      color: Colors.blue.shade700,
+                      size: 20,
+                    ),
+                    tooltip: 'Share Requirement',
+                    onPressed: () {
+                      final shareMessage =
+                          '''
+🚨 *URGENT BLOOD REQUIREMENT* 🚨
+
+🩸 *Blood Group Needed:* ${req.bloodGroup}
+👤 *Patient Name:* ${req.patientName}
+🏥 *Hospital:* ${req.hospitalName}
+📞 *Contact Number:* ${req.contactNumber}
+⏰ *Needed By:* ${req.dateTime}
+⚡ *Urgency Level:* ${req.urgencyLevel}
+
+${req.description.isNotEmpty ? '📝 *Details:* ${req.description}\n' : ''}
+Please share this message to help find a donor as soon as possible. Thank you!
+'''
+                              .trim();
+                      Share.share(shareMessage);
+                    },
+                  ),
+                  IconButton(
+                    icon: Icon(
                       Icons.edit_outlined,
                       color: cs.primary,
                       size: 20,
@@ -261,13 +457,15 @@ class _ManageBloodRequirementScreenState
     final tt = Theme.of(context).textTheme;
     return Scaffold(
       backgroundColor: cs.surface,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Get.to(() => const AddBloodRequirementScreen());
-        },
-        backgroundColor: cs.primary,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+      floatingActionButton: _activeTab == 0
+          ? FloatingActionButton(
+              onPressed: () {
+                Get.to(() => const AddBloodRequirementScreen());
+              },
+              backgroundColor: cs.primary,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -309,9 +507,14 @@ class _ManageBloodRequirementScreenState
                           setState(() {
                             _searchQuery = val;
                           });
+                          if (_activeTab == 1) {
+                            volunteerListController.onSearchTextChanged(val);
+                          }
                         },
                         decoration: InputDecoration(
-                          hintText: 'Search by patient name or hospital...',
+                          hintText: _activeTab == 0
+                              ? 'Search by patient name or hospital...'
+                              : 'Search volunteers by name, blood, location...',
                           hintStyle: tt.bodyMedium?.copyWith(
                             color: cs.onSurface.withOpacity(0.5),
                           ),
@@ -320,7 +523,10 @@ class _ManageBloodRequirementScreenState
                             color: cs.onSurface.withOpacity(0.6),
                             size: 20,
                           ),
-                          suffixIcon: _searchQuery.isNotEmpty
+                          suffixIcon:
+                              (_activeTab == 0
+                                  ? _searchQuery.isNotEmpty
+                                  : _searchController.text.isNotEmpty)
                               ? IconButton(
                                   icon: Icon(
                                     Icons.clear,
@@ -332,6 +538,10 @@ class _ManageBloodRequirementScreenState
                                     setState(() {
                                       _searchQuery = '';
                                     });
+                                    if (_activeTab == 1) {
+                                      volunteerListController
+                                          .onSearchTextChanged('');
+                                    }
                                   },
                                 )
                               : null,
@@ -365,7 +575,9 @@ class _ManageBloodRequirementScreenState
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Oversee and coordinate critical blood supply logistics',
+                    _activeTab == 0
+                        ? 'Oversee and coordinate critical blood supply logistics'
+                        : 'Search and contact potential volunteer blood donors',
                     style: tt.bodyMedium?.copyWith(
                       color: cs.onSurface.withOpacity(0.6),
                     ),
@@ -373,111 +585,304 @@ class _ManageBloodRequirementScreenState
                 ],
               ),
             ),
-            const SizedBox(height: 8),
+
+            // Sliding tab selector
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 600;
-
-                  if (isWide) {
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: StatCard(
-                            title: "Active Requests",
-                            value: controller.requirements.length.toString(),
-                            icon: Icons.event_rounded,
-                            backgroundColor: cs.primary,
-                            textColor: cs.onPrimary,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: CustomWidgets().buildSummaryCard(
-                            context,
-                            title: "Fulfilled Today",
-                            value: '8',
-                            icon: Icons.task_alt_rounded,
-                            color: Colors.green,
-                          ),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Column(
-                    children: [
-                      StatCard(
-                        title: "Active Requests",
-                        value: controller.requirements.length.toString(),
-                        icon: Icons.event_rounded,
-                        backgroundColor: cs.primary,
-                        textColor: cs.onPrimary,
-                      ),
-                      const SizedBox(height: 12),
-                      CustomWidgets().buildSummaryCard(
-                        context,
-                        title: "Fulfilled Today",
-                        value: '8',
-                        icon: Icons.task_alt_rounded,
-                        color: Colors.green,
-                      ),
-                    ],
-                  );
-                },
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
               ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              child: Container(
+                height: 48,
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: cs.outline.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      'Requirement Registry',
-                      style: tt.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary,
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _switchTab(0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _activeTab == 0
+                                ? cs.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: _activeTab == 0
+                                ? [
+                                    BoxShadow(
+                                      color: cs.primary.withOpacity(0.2),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Requirements',
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: _activeTab == 0
+                                  ? Colors.white
+                                  : cs.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
                     Expanded(
-                      child: Obx(() {
-                        final query = _searchQuery.toLowerCase().trim();
-                        final filteredList = controller.requirements.where((
-                          req,
-                        ) {
-                          return req.patientName.toLowerCase().contains(
-                                query,
-                              ) ||
-                              req.hospitalName.toLowerCase().contains(query);
-                        }).toList();
-
-                        if (filteredList.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No blood requirements found',
-                              style: tt.bodyMedium?.copyWith(
-                                color: cs.onSurface.withOpacity(0.5),
-                              ),
+                      child: GestureDetector(
+                        onTap: () => _switchTab(1),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: _activeTab == 1
+                                ? cs.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: _activeTab == 1
+                                ? [
+                                    BoxShadow(
+                                      color: cs.primary.withOpacity(0.2),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Volunteers',
+                            style: tt.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: _activeTab == 1
+                                  ? Colors.white
+                                  : cs.onSurface.withOpacity(0.6),
                             ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          physics: const BouncingScrollPhysics(),
-                          itemCount: filteredList.length,
-                          itemBuilder: (context, index) {
-                            final req = filteredList[index];
-                            return _buildRequirementCard(context, req, cs, tt);
-                          },
-                        );
-                      }),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _activeTab == 0
+                    ? _buildRequirementsTab(context, cs, tt)
+                    : _buildVolunteersTab(context, cs, tt),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequirementsTab(
+    BuildContext context,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Requirement Registry',
+          style: tt.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: cs.primary,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: Obx(() {
+            final query = _searchQuery.toLowerCase().trim();
+            final filteredList = controller.requirements.where((req) {
+              return req.patientName.toLowerCase().contains(query) ||
+                  req.hospitalName.toLowerCase().contains(query);
+            }).toList();
+
+            if (filteredList.isEmpty) {
+              return Center(
+                child: Text(
+                  'No blood requirements found',
+                  style: tt.bodyMedium?.copyWith(
+                    color: cs.onSurface.withOpacity(0.5),
+                  ),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              itemCount: filteredList.length,
+              itemBuilder: (context, index) {
+                final req = filteredList[index];
+                return _buildRequirementCard(context, req, cs, tt);
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVolunteersTab(
+    BuildContext context,
+    ColorScheme cs,
+    TextTheme tt,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Available Volunteers',
+              style: tt.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: cs.primary,
+              ),
+            ),
+         IconButton(
+  icon: Icon(Icons.sort_rounded, color: cs.primary),
+  onPressed: () {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SortVolunteerBottomSheet(),
+    );
+  },
+),  ],
+        ),
+
+        const SizedBox(height: 12),
+        Expanded(
+          child: Obx(() {
+            if (volunteerListController.isLoading.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final list = volunteerListController.searchList;
+
+            if (list.isEmpty) {
+              return Center(
+                child: Text(
+                  'No volunteers found',
+                  style: tt.bodyMedium?.copyWith(
+                    color: cs.onSurface.withOpacity(0.5),
+                  ),
+                ),
+              );
+            }
+
+            return ListView.builder(
+              physics: const BouncingScrollPhysics(),
+              itemCount: list.length,
+              itemBuilder: (context, index) {
+                final vol = list[index];
+                return _buildVolunteerCard(context, vol, cs, tt);
+              },
+            );
+          }),
+        ),
+      ],
+    );
+  }
+}
+
+class SortVolunteerBottomSheet extends StatelessWidget {
+  const SortVolunteerBottomSheet({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = Get.find<VolunteerListController>();
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Sort Volunteers",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            const Text(
+              "Blood Group",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+
+            Wrap(
+              spacing: 8,
+              children: [
+                "A+",
+                "A-",
+                "B+",
+                "B-",
+                "AB+",
+                "AB-",
+                "O+",
+                "O-",
+              ].map((group) {
+                return ChoiceChip(
+                  label: Text(group),
+                  selected: controller.selectedBloodGroup.value == group,
+                  onSelected: (_) {
+                    controller.sortByBloodGroup(group);
+                    Get.back();
+                  },
+                );
+              }).toList(),
+            ),
+
+            const SizedBox(height: 24),
+
+            const Text(
+              "Location",
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+
+            ...controller.locations.map(
+              (location) => ListTile(
+                leading: const Icon(Icons.location_on_outlined),
+                title: Text(location),
+                onTap: () {
+                  controller.sortByLocation(location);
+                  Get.back();
+                },
+              ),
+            ),
+
+            const SizedBox(height: 12),
+
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () {
+                  controller.clearSort();
+                  Get.back();
+                },
+                child: const Text("Clear Sort"),
               ),
             ),
           ],

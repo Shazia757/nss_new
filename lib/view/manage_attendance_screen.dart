@@ -4,6 +4,7 @@ import 'package:nss_new/controller/attendance_controller.dart';
 import 'package:nss_new/view/home_screen.dart';
 import 'package:nss_new/view/view_attendance_screen.dart';
 import 'package:nss_new/view/record_attendance_screen.dart';
+import 'package:nss_new/model/user_model.dart';
 
 class ManageAttendanceScreen extends StatefulWidget {
   const ManageAttendanceScreen({super.key});
@@ -13,7 +14,7 @@ class ManageAttendanceScreen extends StatefulWidget {
 }
 
 class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
-  String _searchQuery = '';
+
   final TextEditingController _searchController = TextEditingController();
   final AttendanceController controller = Get.put(AttendanceController());
 
@@ -30,17 +31,24 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
 
     return Scaffold(
       backgroundColor: cs.surface,
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          Get.to(() => const RecordAttendanceScreen());
+          Get.to(
+            () => const RecordAttendanceScreen(),
+          )?.then((_) => controller.getUsers());
         },
         backgroundColor: cs.primary,
-        child: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          "Record Attendance",
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Top search and back row
             Padding(
               padding: const EdgeInsets.only(
                 left: 8.0,
@@ -75,9 +83,7 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
                       child: TextField(
                         controller: _searchController,
                         onChanged: (val) {
-                          setState(() {
-                            _searchQuery = val;
-                          });
+                          controller.onSearchTextChanged(val);
                         },
                         decoration: InputDecoration(
                           hintText:
@@ -90,7 +96,9 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
                             color: cs.onSurface.withOpacity(0.6),
                             size: 20,
                           ),
-                          suffixIcon: _searchQuery.isNotEmpty
+                          suffixIcon:
+                              controller.searchController.text.isNotEmpty ||
+                                  _searchController.text.isNotEmpty
                               ? IconButton(
                                   icon: Icon(
                                     Icons.clear,
@@ -99,12 +107,10 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
                                   ),
                                   onPressed: () {
                                     _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
+                                    controller.onSearchTextChanged('');
                                   },
                                 )
-                              : null,
+                              : const SizedBox.shrink(),
                           border: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(
                             vertical: 12,
@@ -118,6 +124,7 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
               ),
             ),
 
+            // Header Section
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: 16.0,
@@ -135,7 +142,7 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Manage and track volunteer participation and service hours across all programs.',
+                    'Track volunteer participation, logs and service hours across all programs.',
                     style: tt.bodyMedium?.copyWith(
                       color: cs.onSurface.withOpacity(0.6),
                     ),
@@ -144,226 +151,106 @@ class _ManageAttendanceScreenState extends State<ManageAttendanceScreen> {
               ),
             ),
             const SizedBox(height: 12),
-            Obx(() {
-              final filteredVolunteers = controller.volunteerList.where((p) {
-                final nameMatch =
-                    p['name']?.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ??
-                    false;
-                final idMatch =
-                    p['admissionNo']?.toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    ) ??
-                    false;
-                return nameMatch || idMatch;
-              }).toList();
 
-              return Expanded(
-                child: filteredVolunteers.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No volunteers found',
-                          style: tt.bodyMedium?.copyWith(
-                            color: cs.onSurface.withOpacity(0.5),
-                          ),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async {
-                          controller.volunteerList.refresh();
-                        },
-                        child: ListView(
-                          physics: const AlwaysScrollableScrollPhysics(
-                            parent: BouncingScrollPhysics(),
-                          ),
-                          children: [
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              physics: const BouncingScrollPhysics(),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16.0,
-                                  vertical: 4.0,
-                                ),
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: cs.onPrimary,
-                                    borderRadius: BorderRadius.circular(16),
-                                    border: Border.all(
-                                      color: cs.outline.withOpacity(0.3),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: cs.shadow.withOpacity(0.04),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: DataTable(
-                                    headingRowColor: WidgetStateProperty.all(
-                                      cs.primary.withOpacity(0.06),
-                                    ),
-                                    columnSpacing: 24,
-                                    showCheckboxColumn: false,
-                                    columns: [
-                                      DataColumn(
-                                        label: Text(
-                                          'Volunteer',
-                                          style: tt.titleSmall?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: cs.primary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Last Program',
-                                          style: tt.titleSmall?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: cs.primary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Date',
-                                          style: tt.titleSmall?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: cs.primary,
-                                          ),
-                                        ),
-                                      ),
-                                      DataColumn(
-                                        label: Text(
-                                          'Hours',
-                                          style: tt.titleSmall?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: cs.primary,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                    rows: filteredVolunteers.map((v) {
-                                      final List<dynamic> attendedList =
-                                          v['attendedPrograms'] ?? [];
-                                      final hasAttended =
-                                          attendedList.isNotEmpty;
-                                      final lastProgram = hasAttended
-                                          ? attendedList.last
-                                          : null;
+            Expanded(
+              child: Obx(() {
+                if (controller.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-                                      return DataRow(
-                                        onSelectChanged: (_) {
-                                          Get.to(
-                                            () =>
-                                                AttendanceScreen(volunteer: v),
-                                          );
-                                        },
-                                        cells: [
-                                          DataCell(
-                                            Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  v['name'] ?? '',
-                                                  style: tt.bodyMedium
-                                                      ?.copyWith(
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                        color: cs.onSurface,
-                                                      ),
-                                                ),
-                                                Text(
-                                                  v['admissionNo'] ?? '',
-                                                  style: tt.bodySmall?.copyWith(
-                                                    color: cs.onSurface
-                                                        .withOpacity(0.5),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          DataCell(
-                                            Text(
-                                              lastProgram?['title'] ??
-                                                  'No program',
-                                              style: tt.bodyMedium?.copyWith(
-                                                color: hasAttended
-                                                    ? cs.onSurface
-                                                    : cs.onSurface.withOpacity(
-                                                        0.4,
-                                                      ),
-                                                fontStyle: hasAttended
-                                                    ? FontStyle.normal
-                                                    : FontStyle.italic,
-                                              ),
-                                            ),
-                                          ),
-                                          DataCell(
-                                            Text(
-                                              lastProgram?['date'] ?? '-',
-                                              style: tt.bodyMedium?.copyWith(
-                                                color: hasAttended
-                                                    ? cs.onSurface
-                                                    : cs.onSurface.withOpacity(
-                                                        0.4,
-                                                      ),
-                                              ),
-                                            ),
-                                          ),
-                                          DataCell(
-                                            hasAttended
-                                                ? Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 4,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: cs.secondary
-                                                          .withOpacity(0.12),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            8,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      '${lastProgram?['hours']} hrs',
-                                                      style: tt.labelMedium
-                                                          ?.copyWith(
-                                                            color: cs.secondary,
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                          ),
-                                                    ),
-                                                  )
-                                                : Text(
-                                                    '-',
-                                                    style: tt.bodyMedium
-                                                        ?.copyWith(
-                                                          color: cs.onSurface
-                                                              .withOpacity(0.4),
-                                                        ),
-                                                  ),
-                                          ),
-                                        ],
-                                      );
-                                    }).toList(),
-                                  ),
-                                ),
-                              ),
+                if (controller.searchList.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No volunteers found',
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    controller.getUsers();
+                  },
+                  child: ListView.separated(
+                    physics: const AlwaysScrollableScrollPhysics(
+                      parent: BouncingScrollPhysics(),
+                    ),
+                    padding: const EdgeInsets.only(
+                      left: 16,
+                      right: 16,
+                      top: 12,
+                      bottom: 90,
+                    ),
+                    itemCount: controller.searchList.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final v = controller.searchList[index];
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: cs.onPrimary,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: cs.outline.withOpacity(0.3),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: cs.shadow.withOpacity(0.02),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                      ),
-              );
-            }),
+                        child: ListTile(
+                          onTap: () {
+                            final userObj = Users(
+                              admissionNo: v.admissionNo,
+                              name: v.name,
+                              department: v.department,
+                              role: v.role,
+                            );
+                            Get.to(() => AttendanceScreen(volunteer: userObj));
+                          },
+                          leading: CircleAvatar(
+                            radius: 20,
+                            backgroundColor: cs.primary.withOpacity(0.12),
+                            child: Text(
+                              (v.name?.isNotEmpty ?? false)
+                                  ? v.name![0].toUpperCase()
+                                  : '?',
+                              style: tt.titleMedium?.copyWith(
+                                color: cs.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            v.name ?? '',
+                            style: tt.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            "Admission No: ${v.admissionNo ?? ''}\n${v.department?.category ?? ''} ${v.department?.name ?? ''}",
+                            style: tt.bodySmall?.copyWith(
+                              color: cs.onSurface.withOpacity(0.6),
+                            ),
+                          ),
+                          trailing: Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: cs.onSurface.withOpacity(0.4),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }),
+            ),
           ],
         ),
       ),

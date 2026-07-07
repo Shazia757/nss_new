@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:nss_new/common_pages/custom_decorations.dart';
 import 'package:nss_new/common_pages/navbar.dart';
+import 'package:nss_new/controller/issues_controller.dart';
+import 'package:nss_new/database/local_storage.dart';
+import 'package:nss_new/model/issues_model.dart';
 
 class ReportedIssuesScreen extends StatelessWidget {
   const ReportedIssuesScreen({super.key});
@@ -11,289 +15,232 @@ class ReportedIssuesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final List<Map<String, String>> reportedIssues = [
-      {
-        'title': 'Damaged Classroom Projector',
-        'description':
-            'The projector in Seminar Hall A is not functioning properly, affecting presentations and workshops.',
-        'date': 'June 20, 2026',
-        'reportedBy': 'Aisha Rahman',
-        'admissionNo': '2789',
-        'reportedTo': 'Secretary',
-        'status': 'Pending',
-      },
-      {
-        'title': 'Overflowing Waste Bins',
-        'description':
-            'Waste bins near the canteen have not been emptied for several days, causing hygiene concerns.',
-        'date': 'June 22, 2026',
-        'reportedBy': 'Muhammed Niyas',
-        'admissionNo': '2840',
-        'reportedTo': 'Program Officer',
-        'status': 'Resolved',
-        'resolvedBy': 'Dr. Anil Kumar',
-        'resolvedDate': 'June 24, 2026',
-      },
-      {
-        'title': 'Water Leakage in Corridor',
-        'description':
-            'A continuous water leak has been observed near the Science Block corridor, making the floor slippery.',
-        'date': 'June 23, 2026',
-        'reportedBy': 'Fatima Noor',
-        'admissionNo': '2911',
-        'reportedTo': 'Secretary',
-        'status': 'Resolved',
-        'resolvedBy': 'Secretary Abdul Hameed',
-        'resolvedDate': 'June 25, 2026',
-      },
-      {
-        'title': 'Broken Street Light',
-        'description':
-            'The street light near the main gate is not working, reducing visibility during evening hours.',
-        'date': 'June 24, 2026',
-        'reportedBy': 'Arjun Krishna',
-        'admissionNo': '3002',
-        'reportedTo': 'Program Officer',
-        'status': 'Pending',
-      },
-      {
-        'title': 'Insufficient Drinking Water',
-        'description':
-            'The water dispenser near the library frequently runs out of drinking water during peak hours.',
-        'date': 'June 25, 2026',
-        'reportedBy': 'Nida Fathima',
-        'admissionNo': '3087',
-        'reportedTo': 'Secretary',
-        'status': 'Pending',
-      },
-      {
-        'title': 'Classroom Fan Not Working',
-        'description':
-            'Two ceiling fans in Room 204 are not functioning, causing discomfort during lectures.',
-        'date': 'June 26, 2026',
-        'reportedBy': 'Rahul Raj',
-        'admissionNo': '3144',
-        'reportedTo': 'Program Officer',
-        'status': 'Resolved',
-        'resolvedBy': 'Prof. Meera Nair',
-        'resolvedDate': 'June 27, 2026',
-      },
-      {
-        'title': 'Damaged Campus Bench',
-        'description':
-            'A bench near the central garden has broken wooden planks and requires immediate repair.',
-        'date': 'June 27, 2026',
-        'reportedBy': 'Sneha Thomas',
-        'admissionNo': '3201',
-        'reportedTo': 'Secretary',
-        'status': 'Pending',
-      },
-      {
-        'title': 'Parking Area Congestion',
-        'description':
-            'Improper parking near the main entrance is causing traffic congestion during college hours.',
-        'date': 'June 28, 2026',
-        'reportedBy': 'Mohammed Shibil',
-        'admissionNo': '3310',
-        'reportedTo': 'Program Officer',
-        'status': 'Pending',
-      },
-    ];
-    final pendingIssues = reportedIssues
-        .where((issue) => issue['status'] == 'Pending')
-        .toList();
+    final IssuesController c = Get.put(IssuesController());
+    final role = LocalStorage().readUser().role;
 
-    final resolvedIssues = reportedIssues
-        .where((issue) => issue['status'] == 'Resolved')
-        .toList();
+    // Call getAdminIssues to load all tickets reported to PO/Secretary
+    c.getAdminIssues();
 
     return Scaffold(
       backgroundColor: cs.surface,
-      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
+      bottomNavigationBar: CustomBottomNavBar(
+        currentIndex: role == 'po' ? 2 : 3,
+      ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Resolve Issues',
-                  style: tt.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Track and resolve reported campus issues.',
-                  style: tt.bodyMedium?.copyWith(
-                    color: cs.onSurface.withOpacity(0.6),
-                  ),
-                ),
-                const SizedBox(height: 16),
+        child: Obx(() {
+          if (c.isLoading.value) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 600;
+          final pendingIssues = c.modifiedOpenedList;
+          final resolvedIssues = c.modifiedClosedList;
 
-                    if (isWide) {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: CustomWidgets().buildSummaryCard(
+          return RefreshIndicator(
+            onRefresh: () async {
+              await c.getAdminIssues();
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 16,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Resolve Issues',
+                      style: tt.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Track and resolve reported campus issues.',
+                      style: tt.bodyMedium?.copyWith(
+                        color: cs.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isWide = constraints.maxWidth > 600;
+
+                        if (isWide) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: CustomWidgets().buildSummaryCard(
+                                  context,
+                                  title: "Total Pending",
+                                  value: pendingIssues.length.toString(),
+                                  icon: Icons.pending_actions_rounded,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: CustomWidgets().buildSummaryCard(
+                                  context,
+                                  title: "Total Resolved",
+                                  value: resolvedIssues.length.toString(),
+                                  icon: Icons.task_alt_rounded,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            CustomWidgets().buildSummaryCard(
                               context,
                               title: "Total Pending",
                               value: pendingIssues.length.toString(),
                               icon: Icons.pending_actions_rounded,
                               color: Colors.orange,
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: CustomWidgets().buildSummaryCard(
+                            const SizedBox(height: 12),
+                            CustomWidgets().buildSummaryCard(
                               context,
                               title: "Total Resolved",
                               value: resolvedIssues.length.toString(),
                               icon: Icons.task_alt_rounded,
                               color: Colors.green,
                             ),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 24),
+
+                    Text(
+                      'Pending Issues',
+                      style: tt.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (pendingIssues.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: Text(
+                            'No issues reported',
+                            style: tt.bodyMedium?.copyWith(
+                              color: cs.onSurface.withOpacity(0.5),
+                            ),
                           ),
-                        ],
-                      );
-                    }
-
-                    return Column(
-                      children: [
-                        CustomWidgets().buildSummaryCard(
-                          context,
-                          title: "Total Pending",
-                          value: pendingIssues.length.toString(),
-                          icon: Icons.pending_actions_rounded,
-                          color: Colors.orange,
                         ),
-                        const SizedBox(height: 12),
-                        CustomWidgets().buildSummaryCard(
-                          context,
-                          title: "Total Resolved",
-                          value: resolvedIssues.length.toString(),
-                          icon: Icons.task_alt_rounded,
-                          color: Colors.green,
-                        ),
-                      ],
-                    );
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                Text(
-                  'Pending Issues',
-                  style: tt.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                if (pendingIssues.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Text(
-                        'No issues reported',
-                        style: tt.bodyMedium?.copyWith(
-                          color: cs.onSurface.withOpacity(0.5),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final crossAxisCount = constraints.maxWidth > 900
-                          ? 3
-                          : constraints.maxWidth > 600
-                          ? 2
-                          : 1;
-                      return MasonryGridView.count(
-                        crossAxisCount: crossAxisCount,
-                        shrinkWrap: true,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: pendingIssues.length,
-                        itemBuilder: (context, index) {
-                          final issue = pendingIssues[index];
-                          return _buildPendingIssueCard(context, issue, cs, tt);
-                        },
-                      );
-                    },
-                  ),
-                const SizedBox(height: 24),
-
-                Text(
-                  'Resolved Issues',
-                  style: tt.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                if (resolvedIssues.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Text(
-                        'No issues resolved',
-                        style: tt.bodyMedium?.copyWith(
-                          color: cs.onSurface.withOpacity(0.5),
-                        ),
-                      ),
-                    ),
-                  )
-                else
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      final crossAxisCount = constraints.maxWidth > 900
-                          ? 3
-                          : constraints.maxWidth > 600
-                          ? 2
-                          : 1;
-                      return MasonryGridView.count(
-                        crossAxisCount: crossAxisCount,
-                        shrinkWrap: true,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: resolvedIssues.length,
-                        itemBuilder: (context, index) {
-                          final issue = resolvedIssues[index];
-                          return _buildResolvedIssueCard(
-                            context,
-                            issue,
-                            cs,
-                            tt,
+                      )
+                    else
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount = constraints.maxWidth > 900
+                              ? 3
+                              : constraints.maxWidth > 600
+                              ? 2
+                              : 1;
+                          return MasonryGridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: pendingIssues.length,
+                            itemBuilder: (context, index) {
+                              final issue = pendingIssues[index];
+                              return _buildPendingIssueCard(
+                                context,
+                                issue,
+                                c,
+                                cs,
+                                tt,
+                              );
+                            },
                           );
                         },
-                      );
-                    },
-                  ),
-              ],
+                      ),
+                    const SizedBox(height: 24),
+
+                    Text(
+                      'Resolved Issues',
+                      style: tt.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: cs.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (resolvedIssues.isEmpty)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Center(
+                          child: Text(
+                            'No issues resolved',
+                            style: tt.bodyMedium?.copyWith(
+                              color: cs.onSurface.withOpacity(0.5),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final crossAxisCount = constraints.maxWidth > 900
+                              ? 3
+                              : constraints.maxWidth > 600
+                              ? 2
+                              : 1;
+                          return MasonryGridView.count(
+                            crossAxisCount: crossAxisCount,
+                            shrinkWrap: true,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: resolvedIssues.length,
+                            itemBuilder: (context, index) {
+                              final issue = resolvedIssues[index];
+                              return _buildResolvedIssueCard(
+                                context,
+                                issue,
+                                cs,
+                                tt,
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    const SizedBox(height: 100),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        }),
       ),
     );
   }
 
   Widget _buildPendingIssueCard(
     BuildContext context,
-    Map<String, String> issue,
+    Issues issue,
+    IssuesController controller,
     ColorScheme cs,
     TextTheme tt,
   ) {
+    final dateStr = issue.createdDate != null
+        ? DateFormat.yMMMd().format(issue.createdDate!)
+        : 'N/A';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -341,7 +288,7 @@ class ReportedIssuesScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    issue['date'] ?? '',
+                    dateStr,
                     style: tt.bodySmall?.copyWith(
                       color: cs.onSurface.withOpacity(0.55),
                     ),
@@ -352,7 +299,7 @@ class ReportedIssuesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            issue['title'] ?? '',
+            issue.subject ?? 'General Issue',
             style: tt.titleMedium?.copyWith(
               color: cs.onSurface,
               fontWeight: FontWeight.bold,
@@ -362,7 +309,7 @@ class ReportedIssuesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            issue['description'] ?? '',
+            issue.description ?? '',
             style: tt.bodyMedium?.copyWith(
               color: cs.onSurface.withOpacity(0.7),
               height: 1.3,
@@ -379,7 +326,7 @@ class ReportedIssuesScreen extends StatelessWidget {
                 radius: 12,
                 backgroundColor: cs.primary.withOpacity(0.1),
                 child: Text(
-                  (issue['reportedBy'] ?? 'U').substring(0, 1).toUpperCase(),
+                  (issue.createdBy?.name ?? 'U').substring(0, 1).toUpperCase(),
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -393,14 +340,14 @@ class ReportedIssuesScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      issue['reportedBy'] ?? '',
+                      issue.createdBy?.name ?? '',
                       style: tt.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: cs.onSurface,
                       ),
                     ),
                     Text(
-                      'Admission No: ${issue['admissionNo'] ?? 'N/A'}',
+                      'Admission No: ${issue.createdBy?.admissionNo ?? 'N/A'}',
                       style: tt.bodySmall?.copyWith(
                         color: cs.onSurface.withOpacity(0.5),
                         fontSize: 10,
@@ -439,10 +386,7 @@ class ReportedIssuesScreen extends StatelessWidget {
               Expanded(
                 child: ElevatedButton(
                   onPressed: () {
-                    _showResolveConfirmationDialog(
-                      context,
-                      issue['title'] ?? '',
-                    );
+                    _showResolveConfirmationDialog(context, issue, controller);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: cs.primary,
@@ -469,14 +413,20 @@ class ReportedIssuesScreen extends StatelessWidget {
     );
   }
 
-  void _showResolveConfirmationDialog(BuildContext context, String issueTitle) {
+  void _showResolveConfirmationDialog(
+    BuildContext context,
+    Issues issue,
+    IssuesController controller,
+  ) {
     final cs = Theme.of(context).colorScheme;
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text("Confirm Resolved"),
-        content: Text("Are you sure you have resolved \"$issueTitle\"?"),
+        content: Text(
+          "Are you sure you have resolved \"${issue.subject ?? 'this issue'}\"?",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -488,13 +438,7 @@ class ReportedIssuesScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              Get.snackbar(
-                "Success",
-                'Issue "$issueTitle" marked as resolved',
-                snackPosition: SnackPosition.BOTTOM,
-                backgroundColor: Colors.green.withOpacity(0.9),
-                colorText: Colors.white,
-              );
+              controller.resolveIssue(issue.id!);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: cs.primary,
@@ -502,7 +446,21 @@ class ReportedIssuesScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text("Confirm", style: TextStyle(color: Colors.white)),
+            child: Obx(
+              () => controller.isResolveLoading.value
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      "Confirm",
+                      style: TextStyle(color: Colors.white),
+                    ),
+            ),
           ),
         ],
       ),
@@ -511,10 +469,17 @@ class ReportedIssuesScreen extends StatelessWidget {
 
   Widget _buildResolvedIssueCard(
     BuildContext context,
-    Map<String, String> issue,
+    Issues issue,
     ColorScheme cs,
     TextTheme tt,
   ) {
+    final dateStr = issue.createdDate != null
+        ? DateFormat.yMMMd().format(issue.createdDate!)
+        : 'N/A';
+    final resDateStr = issue.updatedDate != null
+        ? DateFormat.yMMMd().format(issue.updatedDate!)
+        : 'N/A';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -555,7 +520,7 @@ class ReportedIssuesScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    issue['date'] ?? '',
+                    dateStr,
                     style: tt.bodySmall?.copyWith(
                       color: cs.onSurface.withOpacity(0.55),
                     ),
@@ -566,7 +531,7 @@ class ReportedIssuesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            issue['title'] ?? '',
+            issue.subject ?? 'General Issue',
             style: tt.titleMedium?.copyWith(
               color: cs.onSurface.withOpacity(0.8),
               fontWeight: FontWeight.bold,
@@ -576,7 +541,7 @@ class ReportedIssuesScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            issue['description'] ?? '',
+            issue.description ?? '',
             style: tt.bodyMedium?.copyWith(
               color: cs.onSurface.withOpacity(0.6),
               height: 1.3,
@@ -601,7 +566,7 @@ class ReportedIssuesScreen extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Resolved by ${issue['resolvedBy'] ?? 'Admin'} on ${issue['resolvedDate'] ?? ''}',
+                    'Resolved on $resDateStr',
                     style: tt.bodySmall?.copyWith(
                       color: Colors.green.shade800,
                       fontWeight: FontWeight.w500,
@@ -624,7 +589,7 @@ class ReportedIssuesScreen extends StatelessWidget {
                       radius: 10,
                       backgroundColor: cs.onSurface.withOpacity(0.1),
                       child: Text(
-                        (issue['reportedBy'] ?? 'U')
+                        (issue.createdBy?.name ?? 'U')
                             .substring(0, 1)
                             .toUpperCase(),
                         style: TextStyle(
@@ -637,7 +602,7 @@ class ReportedIssuesScreen extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'By: ${issue['reportedBy'] ?? ''}',
+                        'By: ${issue.updatedBy ?? ''}',
                         style: tt.bodySmall?.copyWith(
                           color: cs.onSurface.withOpacity(0.6),
                           fontSize: 11,
@@ -678,15 +643,22 @@ class ReportedIssuesScreen extends StatelessWidget {
 
   void _showIssueDetailsDialog(
     BuildContext context,
-    Map<String, String> issue,
+    Issues issue,
     TextTheme tt,
   ) {
+    final dateStr = issue.createdDate != null
+        ? DateFormat.yMMMd().format(issue.createdDate!)
+        : 'N/A';
+    final resDateStr = issue.updatedDate != null
+        ? DateFormat.yMMMd().format(issue.updatedDate!)
+        : 'N/A';
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
-          issue['title'] ?? '',
+          issue.subject ?? 'Issue Details',
           style: tt.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         content: SingleChildScrollView(
@@ -696,37 +668,29 @@ class ReportedIssuesScreen extends StatelessWidget {
             children: [
               _buildDialogDetailRow(
                 'Status',
-                issue['status'] ?? 'Pending',
+                issue.updatedBy != null ? 'Resolved' : 'Pending',
                 isStatus: true,
               ),
               const SizedBox(height: 8),
               _buildDialogDetailRow(
                 'Reported By',
-                issue['reportedBy'] ?? 'N/A',
+                issue.createdBy?.name ?? 'N/A',
               ),
               const SizedBox(height: 4),
               _buildDialogDetailRow(
                 'Admission No',
-                issue['admissionNo'] ?? 'N/A',
+                issue.createdBy?.admissionNo ?? 'N/A',
               ),
               const SizedBox(height: 4),
-              _buildDialogDetailRow('Reported On', issue['date'] ?? 'N/A'),
+              _buildDialogDetailRow('Reported On', dateStr),
               const SizedBox(height: 4),
               _buildDialogDetailRow(
                 'Reported To',
-                issue['reportedTo'] ?? 'N/A',
+                issue.to == 'sec' ? 'Secretary' : 'Program Officer',
               ),
-              if (issue['status'] == 'Resolved') ...[
+              if (issue.updatedBy != null) ...[
                 const SizedBox(height: 4),
-                _buildDialogDetailRow(
-                  'Resolved By',
-                  issue['resolvedBy'] ?? 'N/A',
-                ),
-                const SizedBox(height: 4),
-                _buildDialogDetailRow(
-                  'Resolved On',
-                  issue['resolvedDate'] ?? 'N/A',
-                ),
+                _buildDialogDetailRow('Resolved On', resDateStr),
               ],
               const Divider(height: 24),
               Text(
@@ -735,7 +699,7 @@ class ReportedIssuesScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                issue['description'] ?? '',
+                issue.description ?? '',
                 style: tt.bodyMedium?.copyWith(height: 1.4),
               ),
             ],

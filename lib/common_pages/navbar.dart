@@ -16,14 +16,22 @@ class CustomBottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final role = LocalStorage().readUser().role;
 
-    const items = [
-      (Icons.home_rounded, 'Home'),
-      (Icons.event_rounded, 'Events'),
-      (Icons.check_circle_rounded, 'Attendance'),
-      (Icons.campaign_rounded, 'Report'),
-      (Icons.person_rounded, 'Profile'),
-    ];
+    final items = role == 'po'
+        ? const [
+            (Icons.home_rounded, 'Home'),
+            (Icons.event_rounded, 'Events'),
+            (Icons.campaign_rounded, 'Report'),
+            (Icons.person_rounded, 'Profile'),
+          ]
+        : const [
+            (Icons.home_rounded, 'Home'),
+            (Icons.event_rounded, 'Events'),
+            (Icons.check_circle_rounded, 'Attendance'),
+            (Icons.campaign_rounded, 'Report'),
+            (Icons.person_rounded, 'Profile'),
+          ];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
@@ -32,13 +40,6 @@ class CustomBottomNavBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(40),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -60,30 +61,49 @@ class CustomBottomNavBar extends StatelessWidget {
   void _navigate(BuildContext context, int index) {
     if (index == currentIndex) return;
 
+    final role = LocalStorage().readUser().role;
+
     Widget screen;
 
-    switch (index) {
-      case 0:
-        screen = const HomeScreen();
-        break;
-      case 1:
-        screen = const ProgramsScreen();
-        break;
-      case 2:
-        screen = const AttendanceScreen();
-        break;
-      case 3:
-        if (LocalStorage().readUser().role=='vol') {
-          screen = const IssuesScreen();
-        } else {
+    if (role == 'po') {
+      switch (index) {
+        case 0:
+          screen = const HomeScreen();
+          break;
+        case 1:
+          screen = const ProgramsScreen();
+          break;
+        case 2:
           screen = const ReportedIssuesScreen();
-        }
-        break;
-      case 4:
-        screen = const ProfileScreen();
-        break;
-      default:
-        return;
+          break;
+        case 3:
+          screen = ProfileScreen();
+          break;
+        default:
+          return;
+      }
+    } else {
+      switch (index) {
+        case 0:
+          screen = const HomeScreen();
+          break;
+        case 1:
+          screen = const ProgramsScreen();
+          break;
+        case 2:
+          screen = const AttendanceScreen();
+          break;
+        case 3:
+          screen = role == 'vol'
+              ? const IssuesScreen()
+              : const ReportedIssuesScreen();
+          break;
+        case 4:
+          screen = ProfileScreen();
+          break;
+        default:
+          return;
+      }
     }
 
     Navigator.pushReplacement(

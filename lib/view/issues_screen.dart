@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:nss_new/common_pages/navbar.dart';
+import 'package:nss_new/controller/issues_controller.dart';
+import 'package:nss_new/model/issues_model.dart';
 import 'package:nss_new/view/home_screen.dart';
+import 'package:nss_new/common_pages/custom_decorations.dart';
 
 class IssuesScreen extends StatefulWidget {
   const IssuesScreen({super.key});
@@ -10,84 +15,13 @@ class IssuesScreen extends StatefulWidget {
 }
 
 class _IssuesScreenState extends State<IssuesScreen> {
-  String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _descriptionController = TextEditingController();
-
-  String? _selectedIssueType = 'Attendance discrepancy';
-  String _sendTo = 'Secretary'; // 'Secretary' or 'Program Officer'
-
-  final List<Map<String, String>> reportedIssues = [
-    {
-      'title': 'Damaged Classroom Projector',
-      'description':
-          'The projector in Seminar Hall A is not functioning properly, affecting presentations and workshops.',
-      'date': 'June 20, 2026',
-      'reportedTo': 'Secretary',
-      'status': 'Pending',
-    },
-    {
-      'title': 'Overflowing Waste Bins',
-      'description':
-          'Waste bins near the canteen have not been emptied for several days, causing hygiene concerns.',
-      'date': 'June 22, 2026',
-      'reportedTo': 'Program Officer',
-      'status': 'Resolved',
-    },
-    {
-      'title': 'Water Leakage in Corridor',
-      'description':
-          'A continuous water leak has been observed near the Science Block corridor, making the floor slippery.',
-      'date': 'June 23, 2026',
-      'reportedTo': 'Secretary',
-      'status': 'Resolved',
-    },
-    {
-      'title': 'Broken Street Light',
-      'description':
-          'The street light near the main gate is not working, reducing visibility during evening hours.',
-      'date': 'June 24, 2026',
-      'reportedTo': 'Program Officer',
-      'status': 'Pending',
-    },
-    {
-      'title': 'Insufficient Drinking Water',
-      'description':
-          'The water dispenser near the library frequently runs out of drinking water during peak hours.',
-      'date': 'June 25, 2026',
-      'reportedTo': 'Secretary',
-      'status': 'Pending',
-    },
-    {
-      'title': 'Classroom Fan Not Working',
-      'description':
-          'Two ceiling fans in Room 204 are not functioning, causing discomfort during lectures.',
-      'date': 'June 26, 2026',
-      'reportedTo': 'Program Officer',
-      'status': 'Resolved',
-    },
-    {
-      'title': 'Damaged Campus Bench',
-      'description':
-          'A bench near the central garden has broken wooden planks and requires immediate repair.',
-      'date': 'June 27, 2026',
-      'reportedTo': 'Secretary',
-      'status': 'Pending',
-    },
-    {
-      'title': 'Parking Area Congestion',
-      'description':
-          'Improper parking near the main entrance is causing traffic congestion during college hours.',
-      'date': 'June 28, 2026',
-      'reportedTo': 'Program Officer',
-      'status': 'Pending',
-    },
-  ];
+  final IssuesController c = Get.put(IssuesController());
+  String _searchQuery = '';
 
   @override
   void dispose() {
     _searchController.dispose();
-    _descriptionController.dispose();
     super.dispose();
   }
 
@@ -96,386 +30,418 @@ class _IssuesScreenState extends State<IssuesScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    // Filter reported issues based on search query
-    final filteredIssues = reportedIssues.where((p) {
-      final titleMatch =
-          p['title']?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
-          false;
-      final descMatch =
-          p['description']?.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ??
-          false;
-      return titleMatch || descMatch;
-    }).toList();
+    return Scaffold(
+      backgroundColor: cs.surface,
+      bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
+      body: Obx(() {
+        if (c.isLoading.value) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        bottomNavigationBar: const CustomBottomNavBar(currentIndex: 3),
-        body: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Navigation & Search Bar (Fixed)
-              Padding(
-                padding: const EdgeInsets.only(
-                  left: 8.0,
-                  right: 16.0,
-                  top: 12.0,
-                  bottom: 8.0,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.arrow_back, color: cs.primary),
-                      onPressed: () {
-                        if (Navigator.of(context).canPop()) {
-                          Navigator.of(context).pop();
-                        } else {
-                          Navigator.of(context).pushReplacement(
-                            MaterialPageRoute(
-                              builder: (context) => const HomeScreen(),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: cs.outline.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (val) {
-                            setState(() {
-                              _searchQuery = val;
-                            });
-                          },
-                          decoration: InputDecoration(
-                            hintText: 'Search issues...',
-                            hintStyle: tt.bodyMedium?.copyWith(
-                              color: cs.onSurface.withOpacity(0.5),
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search,
-                              color: cs.onSurface.withOpacity(0.6),
-                              size: 20,
-                            ),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(
-                                      Icons.clear,
-                                      color: cs.onSurface.withOpacity(0.6),
-                                      size: 18,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() {
-                                        _searchQuery = '';
-                                      });
-                                    },
-                                  )
-                                : null,
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 12,
-                            ),
-                          ),
-                          style: tt.bodyMedium?.copyWith(color: cs.onSurface),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+        // Combine open and closed issues for volunteer view
+        final allIssues = [
+          ...c.modifiedOpenedList.map((e) => {'issue': e, 'resolved': false}),
+          ...c.modifiedClosedList.map((e) => {'issue': e, 'resolved': true}),
+        ];
 
-              // Title and Subtitle Section (Fixed)
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 4.0,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Support Center',
-                      style: tt.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: cs.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Report new issues or track the status of existing issues.',
-                      style: tt.bodyMedium?.copyWith(
-                        color: cs.onSurface.withOpacity(0.6),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
+        // Filter reported issues based on search query
+        final filteredIssues = allIssues.where((item) {
+          final issue = item['issue'] as Issues;
 
-              // Report New Issue Form Card
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: cs.onPrimary,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: cs.outline.withOpacity(0.6)),
+          final titleMatch =
+              issue.subject?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false;
+
+          final descMatch =
+              issue.description?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false;
+
+          return titleMatch || descMatch;
+        }).toList();
+
+        return SafeArea(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 100),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Navigation & Search Bar
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: 8.0,
+                    right: 16.0,
+                    top: 12.0,
+                    bottom: 8.0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Row(
                     children: [
-                      Text(
-                        'Report New Issue',
-                        style: tt.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: cs.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Issue Type',
-                        style: tt.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: cs.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Issue Type Dropdown
-                      DropdownButtonFormField<String>(
-                        value: _selectedIssueType,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: cs.surface,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: cs.outline.withOpacity(0.5),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: cs.outline.withOpacity(0.5),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: cs.primary),
-                          ),
-                        ),
-                        dropdownColor: cs.surface,
-                        items:
-                            [
-                                  'Attendance discrepancy',
-                                  'Event registration error',
-                                  'App/Technical issue',
-                                  'General query',
-                                ]
-                                .map(
-                                  (type) => DropdownMenuItem(
-                                    value: type,
-                                    child: Text(type, style: tt.bodyMedium),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (val) =>
-                            setState(() => _selectedIssueType = val),
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Description',
-                        style: tt.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: cs.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Description text field
-                      TextField(
-                        controller: _descriptionController,
-                        maxLines: 5,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: cs.surface,
-                          hintText: 'Describe the issue...',
-                          hintStyle: tt.bodySmall?.copyWith(
-                            color: cs.onSurface.withOpacity(0.4),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 6,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: cs.outline.withOpacity(0.5),
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(
-                              color: cs.outline.withOpacity(0.5),
-                            ),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                            borderSide: BorderSide(color: cs.primary),
-                          ),
-                        ),
-                        style: tt.bodyMedium,
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Send to (Secretary or Program Officer) choice chips
-                      Row(
-                        children: [
-                          Text(
-                            'Send to: ',
-                            style: tt.bodySmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: cs.onSurface.withOpacity(0.7),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildSendToChip('Secretary'),
-                          const SizedBox(width: 8),
-                          _buildSendToChip('Program Officer'),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
-                      // Submit Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 36,
-                        child: FilledButton(
-                          onPressed: () {
-                            if (_descriptionController.text.trim().isEmpty) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Please enter a description'),
-                                ),
-                              );
-                              return;
-                            }
-                            setState(() {
-                              reportedIssues.insert(0, {
-                                'title': _selectedIssueType ?? 'General Issue',
-                                'description': _descriptionController.text
-                                    .trim(),
-                                'date': 'June 26, 2026',
-                                'reportedTo': _sendTo,
-                                'status': 'Pending',
-                              });
-                              _descriptionController.clear();
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Issue reported successfully'),
+                      IconButton(
+                        icon: Icon(Icons.arrow_back, color: cs.primary),
+                        onPressed: () {
+                          if (Navigator.of(context).canPop()) {
+                            Navigator.of(context).pop();
+                          } else {
+                            Navigator.of(context).pushReplacement(
+                              MaterialPageRoute(
+                                builder: (context) => const HomeScreen(),
                               ),
                             );
-                          },
-                          style: FilledButton.styleFrom(
-                            backgroundColor: cs.secondary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Container(
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: cs.outline.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Text(
-                            'Submit Report',
-                            style: tt.labelLarge?.copyWith(
-                              color: cs.onPrimary,
-                              fontWeight: FontWeight.bold,
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: (val) {
+                              setState(() {
+                                _searchQuery = val;
+                              });
+                            },
+                            decoration: InputDecoration(
+                              hintText: 'Search issues...',
+                              hintStyle: tt.bodyMedium?.copyWith(
+                                color: cs.onSurface.withOpacity(0.5),
+                              ),
+                              prefixIcon: Icon(
+                                Icons.search,
+                                color: cs.onSurface.withOpacity(0.6),
+                                size: 20,
+                              ),
+                              suffixIcon: _searchQuery.isNotEmpty
+                                  ? IconButton(
+                                      icon: Icon(
+                                        Icons.clear,
+                                        color: cs.onSurface.withOpacity(0.6),
+                                        size: 18,
+                                      ),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                        });
+                                      },
+                                    )
+                                  : null,
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                vertical: 12,
+                                horizontal: 16,
+                              ),
                             ),
+                            style: tt.bodyMedium?.copyWith(color: cs.onSurface),
                           ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
 
-              // My Reported Issues Section Title
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Text(
-                  'My Reported Issues',
-                  style: tt.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
+                // Title and Subtitle Section
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 4.0,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Support Center',
+                        style: tt.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: cs.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Report new issues or track the status of existing issues.',
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurface.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
+                const SizedBox(height: 12),
 
-              if (filteredIssues.isEmpty)
+                // Report New Issue Form Card
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Center(
-                    child: Text(
-                      'No issues reported',
-                      style: tt.bodyMedium?.copyWith(
-                        color: cs.onSurface.withOpacity(0.5),
-                      ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.onPrimary,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: cs.outline.withOpacity(0.6)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Report New Issue',
+                          style: tt.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Issue Type',
+                          style: tt.labelLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Issue Type Dropdown
+                        DropdownButtonFormField<String>(
+                          value: c.subjectController.text.isNotEmpty
+                              ? c.subjectController.text
+                              : 'Attendance discrepancy',
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: cs.surface,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: cs.outline.withOpacity(0.5),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: cs.outline.withOpacity(0.5),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: cs.primary),
+                            ),
+                          ),
+                          dropdownColor: cs.surface,
+                          items:
+                              [
+                                    'Attendance discrepancy',
+                                    'Event registration error',
+                                    'App/Technical issue',
+                                    'General query',
+                                  ]
+                                  .map(
+                                    (type) => DropdownMenuItem(
+                                      value: type,
+                                      child: Text(type, style: tt.bodyMedium),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              c.subjectController.text = val;
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Description',
+                          style: tt.labelLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Description text field
+                        TextField(
+                          controller: c.desController,
+                          maxLines: 5,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: cs.surface,
+                            hintText: 'Describe the issue...',
+                            hintStyle: tt.bodySmall?.copyWith(
+                              color: cs.onSurface.withOpacity(0.4),
+                            ),
+                            contentPadding: const EdgeInsets.all(12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: cs.outline.withOpacity(0.5),
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(
+                                color: cs.outline.withOpacity(0.5),
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              borderSide: BorderSide(color: cs.primary),
+                            ),
+                          ),
+                          style: tt.bodyMedium,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Send to (Secretary or Program Officer) choice chips
+                        Row(
+                          children: [
+                            Text(
+                              'Send to: ',
+                              style: tt.bodySmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: cs.onSurface.withOpacity(0.7),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            _buildSendToChip('Secretary', 'sec'),
+                            const SizedBox(width: 8),
+                            _buildSendToChip('Program Officer', 'po'),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Submit Button
+                        SizedBox(
+                          width: double.infinity,
+                          height: 48,
+                          child: FilledButton(
+                            onPressed: () {
+                              if (c.subjectController.text.isEmpty) {
+                                c.subjectController.text =
+                                    'Attendance discrepancy';
+                              }
+                              if (c.onSubmitIssueValidation()) {
+                                CustomWidgets().showConfirmationDialog(
+                                  title: "Report Issue",
+                                  message:
+                                      "Are you sure you want to report the issue?",
+                                  onConfirm: () => c.reportIssue(),
+                                  data: Obx(
+                                    () => (c.isReportLoading.value)
+                                        ? CircularProgressIndicator()
+                                        : Text(
+                                            "Confirm",
+                                            style: TextStyle(color: Colors.red),
+                                          ),
+                                  ),
+                                );
+                              }
+                            },
+                            style: FilledButton.styleFrom(
+                              backgroundColor: cs.secondary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: c.isReportLoading.value
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Submit Report',
+                                    style: tt.labelLarge?.copyWith(
+                                      color: cs.onSecondary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                )
-              else
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: filteredIssues.length,
-                  itemBuilder: (context, index) {
-                    final issue = filteredIssues[index];
-
-                    return _buildReportedIssueCard(
-                      context: context,
-                      title: issue['title'] ?? '',
-                      description: issue['description'] ?? '',
-                      date: issue['date'] ?? '',
-                      reportedTo: issue['reportedTo'] ?? '',
-                      status: issue['status'] ?? 'Pending',
-                      cs: cs,
-                      tt: tt,
-                    );
-                  },
                 ),
-            ],
+                const SizedBox(height: 24),
+
+                // My Reported Issues Section Title
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Text(
+                    'My Reported Issues',
+                    style: tt.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: cs.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                if (filteredIssues.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 40),
+                    child: Center(
+                      child: Text(
+                        'No issues reported',
+                        style: tt.bodyMedium?.copyWith(
+                          color: cs.onSurface.withOpacity(0.5),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredIssues.length,
+                    itemBuilder: (context, index) {
+                      final item = filteredIssues[index];
+                      final issue = item['issue'] as Issues;
+                      final dateStr = issue.createdDate != null
+                          ? DateFormat.yMMMd().format(issue.createdDate!)
+                          : 'N/A';
+
+                      return _buildReportedIssueCard(
+                        context: context,
+                        title: issue.subject ?? 'General query',
+                        description: issue.description ?? '',
+                        date: dateStr,
+                        reportedTo: issue.to == 'sec'
+                            ? 'Secretary'
+                            : 'Program Officer',
+                        status: (issue.isOpen == true) ? 'Pending' : 'Resolved',
+                        cs: cs,
+                        tt: tt,
+                      );
+                    },
+                  ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 
-  Widget _buildSendToChip(String role) {
+  Widget _buildSendToChip(String roleLabel, String roleVal) {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
-    final isSelected = _sendTo == role;
+    final isSelected = c.submittedTo.value == roleVal;
 
     return ChoiceChip(
       showCheckmark: false,
-      label: Text(role),
+      label: Text(roleLabel),
       selected: isSelected,
       labelStyle: tt.bodySmall?.copyWith(
         color: isSelected ? cs.onPrimary : cs.onSurface,
@@ -489,9 +455,7 @@ class _IssuesScreenState extends State<IssuesScreen> {
       ),
       onSelected: (selected) {
         if (selected) {
-          setState(() {
-            _sendTo = role;
-          });
+          c.submittedTo.value = roleVal;
         }
       },
     );

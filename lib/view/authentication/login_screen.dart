@@ -136,37 +136,50 @@ class LoginScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          TextField(
-                            obscureText: true,
-                            controller: c.passwordController,
-                            style: TextStyle(color: cs.onSurface),
-                            decoration: InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.lock_outline,
-                                color: cs.onSurface.withOpacity(0.6),
-                                size: 20,
-                              ),
-                              hintText: "Enter password",
-                              hintStyle: tt.bodyMedium!.copyWith(
-                                color: cs.onSurface.withOpacity(0.2),
-                              ),
-                              filled: true,
-                              fillColor: cs.outline.withOpacity(0.15),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: BorderSide(
-                                  color: cs.outline.withOpacity(0.3),
+                          Obx(
+                            () => TextField(
+                              obscureText: c.isObscure.value,
+                              controller: c.passwordController,
+                              style: TextStyle(color: cs.onSurface),
+                              decoration: InputDecoration(
+                                prefixIcon: Icon(
+                                  Icons.lock_outline,
+                                  color: cs.onSurface.withOpacity(0.6),
+                                  size: 20,
                                 ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: cs.primary,
-                                  width: 1.5,
+                                suffix: GestureDetector(
+                                  onTap: () => (c.isObscure.value)
+                                      ? c.showPassword()
+                                      : c.hidePassword(),
+                                  child: Icon(
+                                    c.isObscure.value
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                    color: Colors.grey,
+                                  ),
                                 ),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                vertical: 16,
+                                hintText: "Enter password",
+                                hintStyle: tt.bodyMedium!.copyWith(
+                                  color: cs.onSurface.withOpacity(0.2),
+                                ),
+                                filled: true,
+                                fillColor: cs.outline.withOpacity(0.15),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(
+                                    color: cs.outline.withOpacity(0.3),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  borderSide: BorderSide(
+                                    color: cs.primary,
+                                    width: 1.5,
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
                               ),
                             ),
                           ),

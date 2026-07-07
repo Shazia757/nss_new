@@ -4,7 +4,7 @@ import 'package:nss_new/model/user_model.dart';
 class VolunteerList {
   bool? status;
   String? message;
-  List<Users>? data;
+  List<Volunteer>? data;
 
   VolunteerList({this.status, this.message, this.data});
 
@@ -13,7 +13,7 @@ class VolunteerList {
       status: json['status'] as bool?,
       message: json['message'] as String?,
       data: (json['data'] as List<dynamic>?)
-          ?.map((e) => Users.fromJson(e as Map<String, dynamic>))
+          ?.map((e) => Volunteer.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }
@@ -36,9 +36,12 @@ class VolunteerDetailResponse {
 
   factory VolunteerDetailResponse.fromJson(Map<String, dynamic> json) {
     return VolunteerDetailResponse(
-        status: json['status'] as bool?,
-        message: json['message'] as String?,
-        volunteerDetails: Users.fromJson(json['volunteer_details']));
+      status: json['status'] as bool?,
+      message: json['message'] as String?,
+      volunteerDetails: json['volunteer_details'] != null
+          ? Users.fromJson(json['volunteer_details'])
+          : null,
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -55,15 +58,32 @@ class Volunteer {
   String? name;
   Department? department;
   String? role;
+  String? bloodGroup;
+  String? address;
+  String? phoneNumber;
 
-  Volunteer({this.admissionNo, this.name, this.department, this.role});
+  Volunteer({
+    this.admissionNo,
+    this.name,
+    this.department,
+    this.role,
+    this.bloodGroup,
+    this.address,
+    this.phoneNumber,
+  });
 
   factory Volunteer.fromJson(Map<String, dynamic> json) {
     return Volunteer(
-        admissionNo: json['admission_number'] as String?,
-        name: json['name'] as String?,
-        department: Department.fromJson(json['department']),
-        role: json['role'] as String?);
+      admissionNo: json['admission_number'] as String?,
+      name: json['name'] as String?,
+      department: json['department'] != null
+          ? Department.fromJson(json['department'])
+          : null,
+      role: json['role'] as String?,
+      bloodGroup: json['blood_group'] as String?,
+      address: json['address'] as String?,
+      phoneNumber: json['phone_number'] as String?,
+    );
   }
 
   Map<String, dynamic> toJson() {
@@ -71,8 +91,10 @@ class Volunteer {
       'admission_number': admissionNo,
       'name': name,
       'department': department?.toJson(),
-      'role': role
+      'role': role,
+      'blood_group': bloodGroup,
+      'address': address,
+      'phone_number': phoneNumber,
     };
   }
 }
-

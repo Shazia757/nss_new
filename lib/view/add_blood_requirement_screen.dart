@@ -130,10 +130,10 @@ class _AddBloodRequirementScreenState extends State<AddBloodRequirementScreen> {
     final tt = Theme.of(context).textTheme;
     final isEditMode = widget.requirement != null;
 
-    return SafeArea(
-      child: Scaffold(
-        backgroundColor: cs.surface,
-        body: Center(
+    return Scaffold(
+      backgroundColor: cs.surface,
+      body: SafeArea(
+        child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 680),
             child: SingleChildScrollView(
